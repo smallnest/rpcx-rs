@@ -61,7 +61,7 @@ pub trait RpcxMessage {
         R: Read;
 }
 
-type Metadata = HashMap<&'static str, &'static str>;
+type Metadata = HashMap<String, String>;
 
 /// a commmon struct for request and response.
 #[derive(Debug, Default)]
@@ -69,7 +69,7 @@ pub struct Message {
     header: [u8; 12],
     service_path: String,
     service_method: String,
-    metadata: Metadata,
+    metadata: Option<&mut Metadata>,
     payload: bytes::BytesMut,
     data: bytes::BytesMut,
 }
@@ -78,6 +78,8 @@ impl Message {
     pub fn new(h: [u8; 12]) -> Message {
         let mut msg: Message = Default::default();
         msg.header = h;
+        let mut metadata: Metadata = HashMap::new();
+        msg.metadata = Some(&mut metadata);
         msg
     }
 }
@@ -164,8 +166,35 @@ impl RpcxMessage for Message {
         let service_method = read_str(&buf[start + 4..start + 4 + len])?;
         self.service_method = service_method;
 
-        let len = read_len(&buf[start..start + 4]) as usize;
+        let start = 4 + len;
         //metadata
+        let len = read_len(&buf[start..start + 4]) as usize;
+        let metadata_bytes = &buf[start + 4..start + 4 + len];
+        let mut start = 0;
+        while start < len {
+            let sl = read_len(&metadata_bytes[start..start + 4]) as usize;
+            let key = read_str(&metadata_bytes[start + 4..start + 4 + sl])?;
+            start = 4 + sl;
+            if start < len {
+                let sl = read_len(&metadata_bytes[start..start + 4]) as usize;
+                let value = read_str(&metadata_bytes[start + 4..start + 4 + sl])?;
+                self.metadata.unwrap().insert(key,value);
+            } else {
+                self.metadata.unwrap().insert(key,String::new());
+                break;
+            }
+
+            start = 4 + sl;
+        }
+
+        let start = 4 + len;
+        // payload
+        let len = read_len(&buf[start..start + 4]) as usize; // TODO: for checking
+        let payload = &buf[start + 4..];
+        let mut payload_bytes = bytes::BytesMut::with_capacity(len);
+        payload_bytes.clone_from_slice(payload);
+        self.payload = payload_bytes;
+
         Ok(())
     }
 }
