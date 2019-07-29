@@ -58,9 +58,10 @@ pub trait RpcxMessage {
     fn set_serialize_type(&mut self, st: SerializeType);
     fn get_seq(&self) -> u64;
     fn set_seq(&mut self, seq: u64);
-    fn parse<R: ?Sized>(&mut self, r: &mut R) -> Result<()>
+    fn decode<R: ?Sized>(&mut self, r: &mut R) -> Result<()>
     where
         R: Read;
+    fn encode(&self) -> Vec<u8>;
 }
 
 type Metadata = HashMap<String, String>;
@@ -76,7 +77,7 @@ pub struct Message {
 }
 impl Message {
     /// Creates a new `Message`
-    pub fn new(h: [u8; 12]) -> Message {
+    pub fn new(h: [u8; 12]) -> Self {
         let mut msg: Message = Default::default();
         msg.header = h;
         msg.metadata = RefCell::new(HashMap::new());
@@ -147,13 +148,15 @@ impl RpcxMessage for Message {
         u64_to_slice(seq, &mut self.header[4..]);
     }
 
-    fn parse<R: ?Sized>(&mut self, r: &mut R) -> Result<()>
+    fn decode<R: ?Sized>(&mut self, r: &mut R) -> Result<()>
     where
         R: Read,
     {
+        r.read_exact(&mut self.header)?;
+
         let mut buf = [0u8; 4];
         r.read(&mut buf[..]).map(|_| {})?;
-        let len = BigEndian::read_u32(&buf);
+        let len = BigEndian::read_u32(&buf); //length of all expect header
         let mut buf = vec![0u8; len as usize];
         r.read(&mut buf[..]).map(|_| ())?;
 
@@ -200,10 +203,73 @@ impl RpcxMessage for Message {
 
         Ok(())
     }
+
+    fn encode(&self) -> Vec<u8> {
+        // encode all except header
+        let mut buf = Vec::<u8>::with_capacity(20);
+        buf.extend_from_slice(&self.header);
+
+        // push fake length
+        let len_bytes = write_len(0);
+        buf.extend_from_slice(&len_bytes);
+
+        // service_path
+        let len = self.service_path.len();
+        let len_bytes = write_len(len as u32);
+        buf.extend_from_slice(&len_bytes);
+        buf.extend_from_slice(self.service_path.as_bytes());
+
+        // service_method
+        let len = self.service_method.len();
+        let len_bytes = write_len(len as u32);
+        buf.extend_from_slice(&len_bytes);
+        buf.extend_from_slice(self.service_method.as_bytes());
+
+        // metadata
+        let mut metadata_bytes = Vec::<u8>::new();
+        let metadata = self.metadata.borrow_mut();
+        for meta in metadata.iter() {
+            let key = meta.0;
+            let len_bytes = write_len(key.len() as u32);
+            metadata_bytes.extend_from_slice(&len_bytes);
+            metadata_bytes.extend_from_slice(key.as_bytes());
+
+            let value = meta.1;
+            let len_bytes = write_len(value.len() as u32);
+            metadata_bytes.extend_from_slice(&len_bytes);
+            metadata_bytes.extend_from_slice(value.as_bytes());
+        }
+        let len = metadata_bytes.len();
+        let len_bytes = write_len(len as u32);
+        buf.extend_from_slice(&len_bytes);
+        buf.append(&mut metadata_bytes);
+
+        // data
+        let len = self.payload.len();
+        let len_bytes = write_len(len as u32);
+        buf.extend_from_slice(&len_bytes);
+        buf.extend_from_slice(&self.payload);
+
+        // set the real length
+        let len = buf.len() - 12 - 4;
+        let len_bytes = write_len(len as u32);
+        buf[12] = len_bytes[0];
+        buf[13] = len_bytes[1];
+        buf[14] = len_bytes[2];
+        buf[15] = len_bytes[3];
+
+        buf
+    }
 }
 
 fn read_len(buf: &[u8]) -> u32 {
     BigEndian::read_u32(&buf[..4])
+}
+
+fn write_len(len: u32) -> [u8; 4] {
+    let mut buf = [0u8; 4];
+    BigEndian::write_u32(&mut buf, len);
+    buf
 }
 
 fn read_str(buf: &[u8]) -> Result<String> {
@@ -299,12 +365,11 @@ mod tests {
             9, 34, 65, 34, 58, 32, 49, 44, 10, 9, 9, 34, 66, 34, 58, 32, 50, 44, 10, 9, 125, 10, 9,
         ];
 
-        let mut header: [u8; 12] = [0; 12];
-        header.copy_from_slice(&msg_data[..12]);
+        let header: [u8; 12] = [0; 12];
         let mut msg = Message::new(header);
 
-        let mut data = &msg_data[12..] as &[u8];
-        match msg.parse(&mut data) {
+        let mut data = &msg_data[..] as &[u8];
+        match msg.decode(&mut data) {
             Err(err) => println!("failed to parse: {}", err),
             Ok(()) => {}
         }
@@ -321,5 +386,29 @@ mod tests {
             "{\n\t\t\"A\": 1,\n\t\t\"B\": 2,\n\t}\n\t",
             std::str::from_utf8(&msg.payload).unwrap()
         );
+    }
+
+    #[test]
+    fn encode() {
+        let msg_data: [u8; 114] = [
+            8, 0, 0, 16, 0, 0, 0, 0, 73, 150, 2, 210, 0, 0, 0, 98, 0, 0, 0, 5, 65, 114, 105, 116,
+            104, 0, 0, 0, 3, 65, 100, 100, 0, 0, 0, 48, 0, 0, 0, 4, 95, 95, 73, 68, 0, 0, 0, 36,
+            54, 98, 97, 55, 98, 56, 49, 48, 45, 57, 100, 97, 100, 45, 49, 49, 100, 49, 45, 56, 48,
+            98, 52, 45, 48, 48, 99, 48, 52, 102, 100, 52, 51, 48, 99, 57, 0, 0, 0, 26, 123, 10, 9,
+            9, 34, 65, 34, 58, 32, 49, 44, 10, 9, 9, 34, 66, 34, 58, 32, 50, 44, 10, 9, 125, 10, 9,
+        ];
+
+        let header: [u8; 12] = [0; 12];
+        let mut msg = Message::new(header);
+
+        let mut data = &msg_data[..] as &[u8];
+        match msg.decode(&mut data) {
+            Err(err) => println!("failed to parse: {}", err),
+            Ok(()) => {}
+        }
+
+        let encoded_bytes = msg.encode();
+
+        assert_eq!(&msg_data[..], &encoded_bytes[..]);
     }
 }
