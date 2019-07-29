@@ -1,5 +1,5 @@
 [package]
-name = "protocol"
+name = "rpcx_protocol"
 version = "0.1.0"
 authors = ["smallnest <smallnest@gmail.com>"]
 edition = "2018"

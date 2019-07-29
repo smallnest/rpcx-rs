@@ -10,4 +10,4 @@ members = [
 debug = true
 
 [profile.bench]
-debug = true
+debug = true 

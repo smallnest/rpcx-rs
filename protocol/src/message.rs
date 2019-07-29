@@ -64,7 +64,7 @@ pub trait RpcxMessage {
     fn encode(&self) -> Vec<u8>;
 }
 
-type Metadata = HashMap<String, String>;
+pub type Metadata = HashMap<String, String>;
 
 /// a commmon struct for request and response.
 #[derive(Debug, Default)]
@@ -77,9 +77,9 @@ pub struct Message {
 }
 impl Message {
     /// Creates a new `Message`
-    pub fn new(h: [u8; 12]) -> Self {
+    pub fn new() -> Self {
         let mut msg: Message = Default::default();
-        msg.header = h;
+        msg.header = [0u8; 12];
         msg.metadata = RefCell::new(HashMap::new());
         msg
     }
@@ -300,9 +300,8 @@ mod tests {
             9, 34, 65, 34, 58, 32, 49, 44, 10, 9, 9, 34, 66, 34, 58, 32, 50, 44, 10, 9, 125, 10, 9,
         ];
 
-        let mut header: [u8; 12] = [0; 12];
-        header.copy_from_slice(&msg_data[..12]);
-        let msg = Message::new(header);
+        let mut msg = Message::new();
+        (&mut msg.header).copy_from_slice(&msg_data[..12]);
 
         assert_eq!(true, msg.check_magic_number());
         assert_eq!(0, msg.get_version());
@@ -328,9 +327,8 @@ mod tests {
             9, 34, 65, 34, 58, 32, 49, 44, 10, 9, 9, 34, 66, 34, 58, 32, 50, 44, 10, 9, 125, 10, 9,
         ];
 
-        let mut header: [u8; 12] = [0; 12];
-        header.copy_from_slice(&msg_data[..12]);
-        let mut msg = Message::new(header);
+        let mut msg = Message::new();
+        msg.header.copy_from_slice(&msg_data[..12]);
 
         msg.set_version(0);
         msg.set_message_type(MessageType::Response);
@@ -356,7 +354,7 @@ mod tests {
     }
 
     #[test]
-    fn parse() {
+    fn decode() {
         let msg_data: [u8; 114] = [
             8, 0, 0, 16, 0, 0, 0, 0, 73, 150, 2, 210, 0, 0, 0, 98, 0, 0, 0, 5, 65, 114, 105, 116,
             104, 0, 0, 0, 3, 65, 100, 100, 0, 0, 0, 48, 0, 0, 0, 4, 95, 95, 73, 68, 0, 0, 0, 36,
@@ -365,8 +363,7 @@ mod tests {
             9, 34, 65, 34, 58, 32, 49, 44, 10, 9, 9, 34, 66, 34, 58, 32, 50, 44, 10, 9, 125, 10, 9,
         ];
 
-        let header: [u8; 12] = [0; 12];
-        let mut msg = Message::new(header);
+        let mut msg = Message::new();
 
         let mut data = &msg_data[..] as &[u8];
         match msg.decode(&mut data) {
@@ -398,8 +395,7 @@ mod tests {
             9, 34, 65, 34, 58, 32, 49, 44, 10, 9, 9, 34, 66, 34, 58, 32, 50, 44, 10, 9, 125, 10, 9,
         ];
 
-        let header: [u8; 12] = [0; 12];
-        let mut msg = Message::new(header);
+        let mut msg = Message::new();
 
         let mut data = &msg_data[..] as &[u8];
         match msg.decode(&mut data) {
