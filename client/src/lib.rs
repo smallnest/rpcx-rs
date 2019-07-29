@@ -1,25 +1,38 @@
-use std::io::prelude::*;
-use std::io::{self, BufReader, BufWriter, Error, Read, Result, Write};
+use std::io::{self, BufReader, BufWriter, Read, Result, Write};
 use std::net::Shutdown;
 use std::net::TcpStream;
 use std::process;
+use std::sync::atomic::AtomicU64;
+use std::sync::atomic::Ordering;
+use std::sync::mpsc::{self, Receiver, Sender};
+use std::sync::Arc;
 use std::thread;
 use std::time;
 
-use ::rpcx_protocol::message::*;
+use rpcx_protocol::message::{Message, MessageType, Metadata, RpcxMessage};
+
+pub mod call;
 
 /// a direct client to connect rpcx services.
 #[derive(Debug)]
-pub struct Client {
+pub struct Client<T, U> {
     addr: &'static str,
     stream: Option<TcpStream>,
+    seq: Arc<AtomicU64>,
+    chan_sender: Sender<call::Call<T, U>>,
+    chan_receiver: Receiver<call::Call<T, U>>,
 }
 
-impl Client {
-    pub fn new(addr: &'static str) -> Client {
+impl<T: Default, U: Default> Client<T, U> {
+    pub fn new(addr: &'static str) -> Client<T, U> {
+        let (sender, receiver) = mpsc::channel();
+
         Client {
             addr: addr,
             stream: None,
+            seq: Arc::new(AtomicU64::new(1)),
+            chan_sender: sender,
+            chan_receiver: receiver,
         }
     }
     pub fn start(&mut self) -> Result<()> {
@@ -32,10 +45,10 @@ impl Client {
             let mut client_buffer = [0u8; 1024];
             let mut reader = BufReader::new(read_stream.try_clone().unwrap());
 
-            let stream = read_stream.try_clone().unwrap();
+            let mut stream = read_stream.try_clone().unwrap();
 
             let mut msg = Message::new();
-            msg.decode(&stream);
+            msg.decode(&mut stream).unwrap();
 
             loop {
                 match reader.read(&mut client_buffer[0..]) {
@@ -94,6 +107,31 @@ impl Client {
         });
 
         Ok(())
+    }
+
+    pub fn async_send(
+        &mut self,
+        service_path: String,
+        service_method: String,
+        metadata: Metadata,
+        args: T,
+        reply: U,
+    ) {
+        let mut req = Message::new();
+        req.set_version(0);
+        req.set_message_type(MessageType::Request);
+        req.service_path = service_path.clone();
+        req.service_method = service_method.clone();
+        req.metadata.replace(metadata);
+
+        let mut callback = call::Call::<T, U>::new();
+        callback.service_path = service_path.clone();
+        callback.service_method = service_method.clone();
+        callback.args = args;
+        callback.reply = reply;
+        callback.seq = self.seq.clone().fetch_add(1, Ordering::SeqCst);
+
+        self.chan_sender.send(callback).unwrap();
     }
 }
 

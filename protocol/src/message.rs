@@ -69,17 +69,18 @@ pub type Metadata = HashMap<String, String>;
 /// a commmon struct for request and response.
 #[derive(Debug, Default)]
 pub struct Message {
-    header: [u8; 12],
-    service_path: String,
-    service_method: String,
-    metadata: RefCell<Metadata>,
-    payload: BytesMut,
+    pub header: [u8; 12],
+    pub service_path: String,
+    pub service_method: String,
+    pub metadata: RefCell<Metadata>,
+    pub payload: BytesMut,
 }
 impl Message {
     /// Creates a new `Message`
     pub fn new() -> Self {
         let mut msg: Message = Default::default();
         msg.header = [0u8; 12];
+        msg.header[0] = MAGIC_NUMBER;
         msg.metadata = RefCell::new(HashMap::new());
         msg
     }
