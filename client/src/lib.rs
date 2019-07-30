@@ -13,9 +13,11 @@ use rpcx_protocol::message::{Message, MessageType, Metadata, RpcxMessage};
 
 pub mod call;
 
+use call::*;
+
 /// a direct client to connect rpcx services.
 #[derive(Debug)]
-pub struct Client<T, U> {
+pub struct Client<T:Arg, U:Reply> {
     addr: &'static str,
     stream: Option<TcpStream>,
     seq: Arc<AtomicU64>,
@@ -23,7 +25,7 @@ pub struct Client<T, U> {
     chan_receiver: Receiver<call::Call<T, U>>,
 }
 
-impl<T: Default, U: Default> Client<T, U> {
+impl<T: Arg, U: Reply> Client<T, U> {
     pub fn new(addr: &'static str) -> Client<T, U> {
         let (sender, receiver) = mpsc::channel();
 
@@ -132,6 +134,7 @@ impl<T: Default, U: Default> Client<T, U> {
         callback.seq = self.seq.clone().fetch_add(1, Ordering::SeqCst);
 
         self.chan_sender.send(callback).unwrap();
+        println!("{:?}",self.chan_receiver.recv().unwrap());
     }
 }
 
