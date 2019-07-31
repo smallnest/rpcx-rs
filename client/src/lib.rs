@@ -15,18 +15,24 @@ pub mod call;
 
 use call::*;
 
+#[derive(Debug,Default)]
+struct RpcData {
+    seq: u64,
+    data: Vec<u8>,
+}
+
 /// a direct client to connect rpcx services.
 #[derive(Debug)]
-pub struct Client<T:Arg, U:Reply> {
+pub struct Client {
     addr: &'static str,
     stream: Option<TcpStream>,
     seq: Arc<AtomicU64>,
-    chan_sender: Sender<call::Call<T, U>>,
-    chan_receiver: Receiver<call::Call<T, U>>,
+    chan_sender: Sender<RpcData>,
+    chan_receiver: Receiver<RpcData>,
 }
 
-impl<T: Arg, U: Reply> Client<T, U> {
-    pub fn new(addr: &'static str) -> Client<T, U> {
+impl Client {
+    pub fn new(addr: &'static str) -> Client {
         let (sender, receiver) = mpsc::channel();
 
         Client {
@@ -111,29 +117,42 @@ impl<T: Arg, U: Reply> Client<T, U> {
         Ok(())
     }
 
-    pub fn async_send(
+    pub fn async_send<T, U>(
         &mut self,
         service_path: String,
         service_method: String,
         metadata: Metadata,
         args: T,
         reply: U,
-    ) {
-        let mut req = Message::new();
-        req.set_version(0);
-        req.set_message_type(MessageType::Request);
-        req.service_path = service_path.clone();
-        req.service_method = service_method.clone();
-        req.metadata.replace(metadata);
+    ) where
+        T: Arg,
+        U: Reply,
+    {
+            let mut req = Message::new();
+            req.set_version(0);
+            req.set_message_type(MessageType::Request);
+            req.service_path = service_path.clone();
+            req.service_method = service_method.clone();
+            req.metadata.replace(metadata);
 
-        let mut callback = call::Call::<T, U>::new();
-        callback.service_path = service_path.clone();
-        callback.service_method = service_method.clone();
-        callback.args = args;
-        callback.reply = reply;
-        callback.seq = self.seq.clone().fetch_add(1, Ordering::SeqCst);
+            let mut callback = call::Call::<T, U>::new();
+            callback.service_path = service_path.clone();
+            callback.service_method = service_method.clone();
+            callback.args = args;
+            callback.reply = reply;
+            callback.seq = self.seq.clone().fetch_add(1, Ordering::SeqCst);
 
-        self.chan_sender.send(callback).unwrap();
+        let data = vec![
+                8, 0, 0, 48, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 31, 0, 0, 0, 5, 65, 114, 105, 116,
+                104, 0, 0, 0, 3, 77, 117, 108, 0, 0, 0, 0, 0, 0, 0, 7, 130, 161, 65, 10, 161, 66,
+                20,
+            ];
+        let send_data = RpcData {
+            seq: callback.seq,
+            data: data,
+        };
+
+        self.chan_sender.send(send_data).unwrap();
         println!("{:?}",self.chan_receiver.recv().unwrap());
     }
 }
