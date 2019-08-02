@@ -5,17 +5,15 @@ use std::process;
 use std::sync::atomic::AtomicU64;
 use std::sync::atomic::Ordering;
 use std::sync::mpsc::{self, Receiver, Sender};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::thread;
-use std::time;
 
 use rpcx_protocol::message::{Message, MessageType, Metadata, RpcxMessage};
 
 pub mod call;
+pub use call::*;
 
-use call::*;
-
-#[derive(Debug,Default)]
+#[derive(Debug, Default)]
 struct RpcData {
     seq: u64,
     data: Vec<u8>,
@@ -28,7 +26,7 @@ pub struct Client {
     stream: Option<TcpStream>,
     seq: Arc<AtomicU64>,
     chan_sender: Sender<RpcData>,
-    chan_receiver: Receiver<RpcData>,
+    chan_receiver: Arc<Mutex<Receiver<RpcData>>>,
 }
 
 impl Client {
@@ -40,7 +38,7 @@ impl Client {
             stream: None,
             seq: Arc::new(AtomicU64::new(1)),
             chan_sender: sender,
-            chan_receiver: receiver,
+            chan_receiver: Arc::new(Mutex::new(receiver)),
         }
     }
     pub fn start(&mut self) -> Result<()> {
@@ -76,48 +74,46 @@ impl Client {
             }
         });
 
+        let chan_receiver = self.chan_receiver.clone();
+
         thread::spawn(move || {
-            let msg_data: [u8; 47] = [
-                8, 0, 0, 48, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 31, 0, 0, 0, 5, 65, 114, 105, 116,
-                104, 0, 0, 0, 3, 77, 117, 108, 0, 0, 0, 0, 0, 0, 0, 7, 130, 161, 65, 10, 161, 66,
-                20,
-            ];
-
-            let mut msg = Message::new();
-            let mut data = &msg_data[..] as &[u8];
-            msg.decode(&mut data).unwrap();
-
             let mut writer = BufWriter::new(write_stream.try_clone().unwrap());
             loop {
-                let req = msg.encode();
-                match writer.write_all(req.as_slice()) {
-                    Ok(()) => {
-                        println!("wrote");
-                    }
+                match chan_receiver.lock().unwrap().recv() {
                     Err(error) => {
-                        println!("failed to write: {}", error.to_string());
+                        println!("failed to fetch RpcData: {}", error.to_string());
                         write_stream.shutdown(Shutdown::Both).unwrap();
+                        return;
+                    }
+                    Ok(rpcdata) => {
+                        match writer.write_all(rpcdata.data.as_slice()) {
+                            Ok(()) => {
+                                println!("wrote");
+                            }
+                            Err(error) => {
+                                println!("failed to write: {}", error.to_string());
+                                write_stream.shutdown(Shutdown::Both).unwrap();
+                            }
+                        }
+
+                        match writer.flush() {
+                            Ok(()) => {
+                                println!("flushed");
+                            }
+                            Err(error) => {
+                                println!("failed to flush: {}", error.to_string());
+                                write_stream.shutdown(Shutdown::Both).unwrap();
+                            }
+                        }
                     }
                 }
-
-                match writer.flush() {
-                    Ok(()) => {
-                        println!("flushed");
-                    }
-                    Err(error) => {
-                        println!("failed to flush: {}", error.to_string());
-                        write_stream.shutdown(Shutdown::Both).unwrap();
-                    }
-                }
-
-                thread::sleep(time::Duration::from_millis(1000));
             }
         });
 
         Ok(())
     }
 
-    pub fn async_send<T, U>(
+    pub fn send<T, U>(
         &mut self,
         service_path: String,
         service_method: String,
@@ -128,32 +124,31 @@ impl Client {
         T: Arg,
         U: Reply,
     {
-            let mut req = Message::new();
-            req.set_version(0);
-            req.set_message_type(MessageType::Request);
-            req.service_path = service_path.clone();
-            req.service_method = service_method.clone();
-            req.metadata.replace(metadata);
+        let mut req = Message::new();
+        req.set_version(0);
+        req.set_message_type(MessageType::Request);
+        req.service_path = service_path.clone();
+        req.service_method = service_method.clone();
+        req.metadata.replace(metadata);
 
-            let mut callback = call::Call::<T, U>::new();
-            callback.service_path = service_path.clone();
-            callback.service_method = service_method.clone();
-            callback.args = args;
-            callback.reply = reply;
-            callback.seq = self.seq.clone().fetch_add(1, Ordering::SeqCst);
+        let mut callback = call::Call::<T, U>::new();
+        callback.service_path = service_path.clone();
+        callback.service_method = service_method.clone();
+        callback.args = args;
+        callback.reply = reply;
+        callback.seq = self.seq.clone().fetch_add(1, Ordering::SeqCst);
 
         let data = vec![
-                8, 0, 0, 48, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 31, 0, 0, 0, 5, 65, 114, 105, 116,
-                104, 0, 0, 0, 3, 77, 117, 108, 0, 0, 0, 0, 0, 0, 0, 7, 130, 161, 65, 10, 161, 66,
-                20,
-            ];
+            8, 0, 0, 16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 39, 0, 0, 0, 5, 65, 114, 105, 116, 104,
+            0, 0, 0, 3, 77, 117, 108, 0, 0, 0, 0, 0, 0, 0, 15, 123, 34, 65, 34, 58, 49, 48, 44, 34,
+            66, 34, 58, 50, 48, 125,
+        ];
         let send_data = RpcData {
             seq: callback.seq,
             data: data,
         };
 
-        self.chan_sender.send(send_data).unwrap();
-        println!("{:?}",self.chan_receiver.recv().unwrap());
+        self.chan_sender.clone().send(send_data).unwrap();
     }
 }
 
