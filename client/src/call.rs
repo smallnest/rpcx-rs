@@ -1,10 +1,19 @@
 use std::cell::RefCell;
 use std::fmt::Debug;
+use std::io::Result;
 use std::sync::Arc;
 
-pub trait Arg: Debug {}
+use rpcx_protocol::SerializeType;
 
-pub trait Reply: Debug {}
+pub trait Arg: Debug {
+    fn into_bytes(&self, st: SerializeType) -> Result<Vec<u8>>;
+    fn from_slice(&mut self, st: SerializeType, data: &[u8]) -> Result<()>;
+}
+
+pub trait Reply: Debug {
+    fn into_bytes(&self, st: SerializeType) -> Result<Vec<u8>>;
+    fn from_slice(&mut self, st: SerializeType, data: &[u8]) -> Result<()>;
+}
 
 pub type ArcReply = Arc<RefCell<Box<dyn Reply>>>;
 

@@ -3,7 +3,6 @@ use num_traits::{FromPrimitive, ToPrimitive};
 use strum_macros::{Display, EnumIter, EnumString};
 
 use byteorder::{BigEndian, ByteOrder};
-use bytes::BytesMut;
 use std::cell::RefCell;
 use std::collections::hash_map::HashMap;
 use std::io::Read;
@@ -73,7 +72,7 @@ pub struct Message {
     pub service_path: String,
     pub service_method: String,
     pub metadata: RefCell<Metadata>,
-    pub payload: BytesMut,
+    pub payload: Vec<u8>,
 }
 impl Message {
     /// Creates a new `Message`
@@ -197,10 +196,9 @@ impl RpcxMessage for Message {
         let len = read_len(&buf[start..start + 4]) as usize; // TODO: for checking
         let payload = &buf[start + 4..];
 
-        let mut payload_bytes = BytesMut::with_capacity(len);
-        payload_bytes.resize(len, 0u8);
-        payload_bytes.clone_from_slice(&payload);
-        self.payload = payload_bytes;
+        let mut vp = Vec::with_capacity(payload.len());
+        vp.extend_from_slice(&payload);
+        self.payload = vp;
 
         Ok(())
     }

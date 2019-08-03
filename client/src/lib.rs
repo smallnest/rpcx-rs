@@ -1,4 +1,3 @@
-use std::cell::RefCell;
 use std::collections::HashMap;
 use std::io::{BufReader, BufWriter, Result, Write};
 use std::net::Shutdown;
@@ -9,7 +8,7 @@ use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread;
 
-use rpcx_protocol::message::{Message, MessageType, Metadata, RpcxMessage};
+use rpcx_protocol::message::*;
 
 pub mod call;
 pub use call::*;
@@ -38,7 +37,7 @@ impl Client {
         Client {
             addr: addr,
             stream: None,
-            seq: Arc::new(AtomicU64::new(1)),
+            seq: Arc::new(AtomicU64::new(0)),
             chan_sender: sender,
             chan_receiver: Arc::new(Mutex::new(receiver)),
             calls: Arc::new(Mutex::new(HashMap::new())),
@@ -115,24 +114,32 @@ impl Client {
         args: &dyn Arg,
         reply: Option<ArcReply>,
     ) {
+        let seq = self.seq.clone().fetch_add(1, Ordering::SeqCst);
+
         let mut req = Message::new();
         req.set_version(0);
         req.set_message_type(MessageType::Request);
+        req.set_serialize_type(SerializeType::JSON);
+        req.set_seq(seq);
         req.service_path = service_path.clone();
         req.service_method = service_method.clone();
         req.metadata.replace(metadata);
+        let payload = args.into_bytes(SerializeType::JSON).unwrap();
+        req.payload = payload;
 
-        let seq = self.seq.clone().fetch_add(1, Ordering::SeqCst);
         if reply.is_some() {
             let ar = reply.unwrap();
             let callback = call::Call::new(seq, ar.clone());
             self.calls.clone().lock().unwrap().insert(seq, callback);
         }
-        let data = vec![
+        let test_data = vec![
             8, 0, 0, 16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 39, 0, 0, 0, 5, 65, 114, 105, 116, 104,
             0, 0, 0, 3, 77, 117, 108, 0, 0, 0, 0, 0, 0, 0, 15, 123, 34, 65, 34, 58, 49, 48, 44, 34,
             66, 34, 58, 50, 48, 125,
         ];
+
+        let data = req.encode();
+
         let send_data = RpcData {
             seq: seq,
             data: data,
