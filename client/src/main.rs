@@ -3,6 +3,7 @@ use rpcx_client::Client;
 use std::thread;
 use std::time;
 use std::collections::hash_map::HashMap;
+use std::cell::RefCell;
 
 #[allow(unused_imports)]
 use rpcx_client::{Arg,Reply};
@@ -29,7 +30,7 @@ pub fn main() {
         let args = ArithAddArgs{a:10,b:20};
         let reply: ArithAddReply = Default::default();
 
-        c.send(service_path, service_method, metadata, args, reply);
+        c.send(service_path, service_method, metadata, args, Some(RefCell::from(reply)));
 
         thread::sleep(time::Duration::from_millis(10 * 1000));
     }

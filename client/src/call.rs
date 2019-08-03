@@ -1,4 +1,5 @@
 use std::fmt::Debug;
+use std::cell::RefCell;
 
 pub trait Arg: Default + Debug {}
 
@@ -13,7 +14,7 @@ pub struct Call<T: Arg, U: Reply> {
     pub service_method: String,
     pub seq: u64,
     pub args: T,
-    pub reply: U,
+    pub reply: Option<RefCell<U>>,
     pub error: String,
 }
 

@@ -1,7 +1,7 @@
-use std::io::{self, BufReader, BufWriter, Read, Result, Write};
+use std::cell::RefCell;
+use std::io::{BufReader, BufWriter, Result, Write};
 use std::net::Shutdown;
 use std::net::TcpStream;
-use std::process;
 use std::sync::atomic::AtomicU64;
 use std::sync::atomic::Ordering;
 use std::sync::mpsc::{self, Receiver, Sender};
@@ -48,23 +48,13 @@ impl Client {
         self.stream = Some(stream);
 
         thread::spawn(move || {
-            let mut client_buffer = [0u8; 1024];
             let mut reader = BufReader::new(read_stream.try_clone().unwrap());
 
-            let mut stream = read_stream.try_clone().unwrap();
-
-            let mut msg = Message::new();
-            msg.decode(&mut stream).unwrap();
-
             loop {
-                match reader.read(&mut client_buffer[0..]) {
-                    Ok(n) => {
-                        if n == 0 {
-                            process::exit(0);
-                        } else {
-                            io::stdout().write(&client_buffer).unwrap();
-                            io::stdout().flush().unwrap();
-                        }
+                let mut msg = Message::new();
+                match msg.decode(&mut reader) {
+                    Ok(()) => {
+                        println!("{:?}", msg);
                     }
                     Err(error) => {
                         println!("failed to read: {}", error.to_string());
@@ -86,6 +76,7 @@ impl Client {
                         return;
                     }
                     Ok(rpcdata) => {
+                        println!("{:?}", &rpcdata.data);
                         match writer.write_all(rpcdata.data.as_slice()) {
                             Ok(()) => {
                                 println!("wrote");
@@ -119,7 +110,7 @@ impl Client {
         service_method: String,
         metadata: Metadata,
         args: T,
-        reply: U,
+        reply: Option<RefCell<U>>,
     ) where
         T: Arg,
         U: Reply,
