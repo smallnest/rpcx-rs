@@ -1,4 +1,5 @@
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::io::{BufReader, BufWriter, Result, Write};
 use std::net::Shutdown;
 use std::net::TcpStream;
@@ -27,6 +28,7 @@ pub struct Client {
     seq: Arc<AtomicU64>,
     chan_sender: Sender<RpcData>,
     chan_receiver: Arc<Mutex<Receiver<RpcData>>>,
+    calls: Arc<Mutex<HashMap<u64, Call>>>,
 }
 
 impl Client {
@@ -39,6 +41,7 @@ impl Client {
             seq: Arc::new(AtomicU64::new(1)),
             chan_sender: sender,
             chan_receiver: Arc::new(Mutex::new(receiver)),
+            calls: Arc::new(Mutex::new(HashMap::new())),
         }
     }
     pub fn start(&mut self) -> Result<()> {
@@ -104,17 +107,14 @@ impl Client {
         Ok(())
     }
 
-    pub fn send<T, U>(
+    pub fn send(
         &mut self,
         service_path: String,
         service_method: String,
         metadata: Metadata,
-        args: T,
-        reply: Option<RefCell<U>>,
-    ) where
-        T: Arg,
-        U: Reply,
-    {
+        args: &dyn Arg,
+        reply: Option<ArcReply>,
+    ) {
         let mut req = Message::new();
         req.set_version(0);
         req.set_message_type(MessageType::Request);
@@ -122,31 +122,22 @@ impl Client {
         req.service_method = service_method.clone();
         req.metadata.replace(metadata);
 
-        let mut callback = call::Call::<T, U>::new();
-        callback.service_path = service_path.clone();
-        callback.service_method = service_method.clone();
-        callback.args = args;
-        callback.reply = reply;
-        callback.seq = self.seq.clone().fetch_add(1, Ordering::SeqCst);
-
+        let seq = self.seq.clone().fetch_add(1, Ordering::SeqCst);
+        if reply.is_some() {
+            let ar = reply.unwrap();
+            let callback = call::Call::new(seq, ar.clone());
+            self.calls.clone().lock().unwrap().insert(seq, callback);
+        }
         let data = vec![
             8, 0, 0, 16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 39, 0, 0, 0, 5, 65, 114, 105, 116, 104,
             0, 0, 0, 3, 77, 117, 108, 0, 0, 0, 0, 0, 0, 0, 15, 123, 34, 65, 34, 58, 49, 48, 44, 34,
             66, 34, 58, 50, 48, 125,
         ];
         let send_data = RpcData {
-            seq: callback.seq,
+            seq: seq,
             data: data,
         };
 
         self.chan_sender.clone().send(send_data).unwrap();
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
     }
 }

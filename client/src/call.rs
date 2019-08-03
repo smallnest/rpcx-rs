@@ -1,25 +1,26 @@
-use std::fmt::Debug;
 use std::cell::RefCell;
+use std::fmt::Debug;
+use std::sync::Arc;
 
-pub trait Arg: Default + Debug {}
+pub trait Arg: Debug {}
 
-pub trait Reply: Default + Debug {}
+pub trait Reply: Debug {}
 
-impl<T: Default + Debug> Arg for T {}
-impl<T: Default + Debug> Reply for T {}
+pub type ArcReply = Arc<RefCell<Box<dyn Reply>>>;
 
-#[derive(Default, Debug)]
-pub struct Call<T: Arg, U: Reply> {
-    pub service_path: String,
-    pub service_method: String,
+#[derive(Debug)]
+pub struct Call {
     pub seq: u64,
-    pub args: T,
-    pub reply: Option<RefCell<U>>,
     pub error: String,
+    pub reply: ArcReply,
 }
 
-impl<T: Arg, U: Reply> Call<T, U> {
-    pub fn new() -> Self {
-        Default::default()
+impl Call {
+    pub fn new(seq: u64, ar: ArcReply) -> Self {
+        Call {
+            seq: seq,
+            error: String::new(),
+            reply: ar,
+        }
     }
 }
