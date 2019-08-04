@@ -12,7 +12,7 @@ use std::time;
 use serde::{Deserialize, Serialize};
 
 #[allow(unused_imports)]
-use rpcx_client::{ArcResp, Arg, Reply};
+use rpcx_client::{Arg, Reply};
 
 use rpcx_protocol::{CompressType, SerializeType};
 
@@ -80,25 +80,28 @@ pub fn main() {
         let args = ArithAddArgs { a: a, b: 10 };
         a = a + 1;
 
-        let resp_data = Vec::new();
-        let arc_resp = Arc::new(RefCell::new(resp_data));
 
-        c.send(
+        let arc_call = c.send(
             service_path,
             service_method,
             SerializeType::JSON,
             CompressType::CompressNone,
+            false,
+            false,
             metadata,
             &args,
-            Some(arc_resp.clone()),
         );
 
         thread::sleep(time::Duration::from_millis(5 * 1000));
 
+        let arc_call_1 = arc_call.unwrap().clone();
+        let mut arc_call_2 = arc_call_1.lock().unwrap();
+        let arc_call_3 = arc_call_2.get_mut();
+        let reply_data = &arc_call_3.reply_data;
+
         let mut reply: ArithAddReply = Default::default();
-        reply
-            .from_slice(SerializeType::JSON(), &arc_resp.borrow())
-            .unwrap();
+        reply.from_slice(SerializeType::JSON, &reply_data).unwrap();
         println!("received: {:?}", &reply);
+        println!("received call state: {}", &arc_call_3.state);
     }
 }

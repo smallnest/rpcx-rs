@@ -1,4 +1,5 @@
 use futures::Future;
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::io::{BufReader, BufWriter, Result, Write};
 use std::net::Shutdown;
@@ -18,6 +19,7 @@ pub use call::*;
 struct RpcData {
     seq: u64,
     data: Vec<u8>,
+
 }
 
 /// a direct client to connect rpcx services.
@@ -28,7 +30,7 @@ pub struct Client {
     seq: Arc<AtomicU64>,
     chan_sender: Sender<RpcData>,
     chan_receiver: Arc<Mutex<Receiver<RpcData>>>,
-    calls: Arc<Mutex<HashMap<u64, Call>>>,
+    calls: Arc<Mutex<HashMap<u64, ArcCall>>>,
 }
 
 impl Client {
@@ -43,7 +45,7 @@ impl Client {
             chan_receiver: Arc::new(Mutex::new(receiver)),
             calls: Arc::new(Mutex::new(HashMap::new())),
         }
-    }
+    } 
     pub fn start(&mut self) -> Result<()> {
         let stream = TcpStream::connect(self.addr)?;
         let read_stream = stream.try_clone()?;
@@ -59,10 +61,11 @@ impl Client {
                 match msg.decode(&mut reader) {
                     Ok(()) => match calls.lock().unwrap().get(&msg.get_seq()) {
                         Some(call) => {
-                            call.reply
-                                .clone()
-                                .borrow_mut()
-                                .extend_from_slice(&msg.payload);
+                            let internal_call_cloned = call.clone();
+                            let mut internal_call_mutex = internal_call_cloned.lock().unwrap();
+                            let mut internal_call = internal_call_mutex.get_mut();
+                            internal_call.reply_data.extend_from_slice(&msg.payload);
+                            internal_call.state = 1;
                         }
                         None => {}
                     },
@@ -119,10 +122,11 @@ impl Client {
         service_method: String,
         st: SerializeType,
         ct: CompressType,
+        is_oneway: bool,
+        is_heartbeat: bool,
         metadata: Metadata,
         args: &dyn Arg,
-        reply: Option<ArcResp>,
-    ) {
+    ) -> Option<ArcCall>{
         let seq = self.seq.clone().fetch_add(1, Ordering::SeqCst);
 
         let mut req = Message::new();
@@ -144,13 +148,13 @@ impl Client {
         };
         self.chan_sender.clone().send(send_data).unwrap();
 
-        match reply {
-            Some(_) => {
-                let ar = reply.unwrap();
-                let callback = call::Call::new(seq, ar.clone());
-                self.calls.clone().lock().unwrap().insert(seq, callback);
-            }
-            None => {}
+        if !is_oneway && !is_heartbeat {
+            let callback = call::Call::new(seq);
+            let arc_call = Arc::new(Mutex::new(RefCell::from(callback)));
+            self.calls.clone().lock().unwrap().insert(seq, arc_call.clone());
+            return Some(arc_call);
         }
+
+        None
     }
 }
