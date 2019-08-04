@@ -6,7 +6,7 @@ use std::io::Result;
 use std::sync::Arc;
 use std::sync::Mutex;
 
-use rpcx_protocol::SerializeType;
+use crate::SerializeType;
 
 pub trait Arg: Debug {
     fn into_bytes(&self, st: SerializeType) -> Result<Vec<u8>>;

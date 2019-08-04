@@ -10,26 +10,27 @@ use std::io::Result;
 use std::string::String;
 
 const MAGIC_NUMBER: u8 = 0x08;
+const ServiceError: &str = "__rpcx_error__";
 
-#[derive(Debug, Clone, Display, PartialEq, EnumIter, EnumString, Primitive)]
+#[derive(Debug, Copy, Clone, Display, PartialEq, EnumIter, EnumString, Primitive)]
 pub enum MessageType {
     Request = 0,
     Response = 1,
 }
 
-#[derive(Debug, Clone, Display, PartialEq, EnumIter, EnumString, Primitive)]
+#[derive(Debug, Copy, Clone, Display, PartialEq, EnumIter, EnumString, Primitive)]
 pub enum MessageStatusType {
     Normal = 0,
     Error = 1,
 }
 
-#[derive(Debug, Clone, Display, PartialEq, EnumIter, EnumString, Primitive)]
+#[derive(Debug, Copy, Clone, Display, PartialEq, EnumIter, EnumString, Primitive)]
 pub enum CompressType {
     CompressNone = 0,
     Gzip = 1,
 }
 
-#[derive(Debug, Clone, Display, PartialEq, EnumIter, EnumString, Primitive)]
+#[derive(Debug, Copy, Clone, Display, PartialEq, EnumIter, EnumString, Primitive)]
 pub enum SerializeType {
     SerializeNone = 0,
     JSON = 1,
@@ -61,6 +62,8 @@ pub trait RpcxMessage {
     where
         R: Read;
     fn encode(&self) -> Vec<u8>;
+
+    fn get_error(&self) -> Option<String>;
 }
 
 pub type Metadata = HashMap<String, String>;
@@ -258,6 +261,18 @@ impl RpcxMessage for Message {
         buf[15] = len_bytes[3];
 
         buf
+    }
+
+    fn get_error(&self) -> Option<String> {
+        match self.get_message_status_type() {
+            Some(MessageStatusType::Error) => {
+                let metadata = &self.metadata;
+                let metadata2 = metadata.borrow();
+                let err_msg = &metadata2.get(&ServiceError.to_owned())?;
+                return Some(String::from(*err_msg));
+            },
+            _ => None,
+        } 
     }
 }
 

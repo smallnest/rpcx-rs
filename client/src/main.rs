@@ -4,14 +4,11 @@ use std::collections::hash_map::HashMap;
 use std::io::Error;
 use std::io::ErrorKind;
 use std::io::Result;
-use std::thread;
-use std::time;
 
 use futures::future::*;
 use serde::{Deserialize, Serialize};
 
-#[allow(unused_imports)]
-use rpcx_client::{Arg, CallFuture, Reply};
+use rpcx_protocol::{Arg, Reply};
 
 use rpcx_protocol::{CompressType, SerializeType};
 
@@ -79,22 +76,9 @@ pub fn main() {
         let args = ArithAddArgs { a: a, b: 10 };
         a = a + 1;
 
-        let f = c.send(
-            service_path,
-            service_method,
-            SerializeType::JSON,
-            CompressType::CompressNone,
-            false,
-            false,
-            metadata,
-            &args,
-        );
+        let f = c.send(service_path, service_method, false, false, metadata, &args);
 
         let arc_call = f.wait().unwrap();
-
-        // thread::sleep(time::Duration::from_millis(5 * 1000));
-        // let arc_call = f.arc_call;
-
         let arc_call_1 = arc_call.unwrap().clone();
         let mut arc_call_2 = arc_call_1.lock().unwrap();
         let arc_call_3 = arc_call_2.get_mut();
