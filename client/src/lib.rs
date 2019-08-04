@@ -66,6 +66,7 @@ impl Client {
                             let mut internal_call = internal_call_mutex.get_mut();
                             internal_call.reply_data.extend_from_slice(&msg.payload);
                             internal_call.state = 1;
+                            // TODO: error handling
                         }
                         None => {}
                     },
@@ -126,7 +127,7 @@ impl Client {
         is_heartbeat: bool,
         metadata: Metadata,
         args: &dyn Arg,
-    ) -> Option<ArcCall>{
+    ) -> CallFuture{
         let seq = self.seq.clone().fetch_add(1, Ordering::SeqCst);
 
         let mut req = Message::new();
@@ -152,9 +153,10 @@ impl Client {
             let callback = call::Call::new(seq);
             let arc_call = Arc::new(Mutex::new(RefCell::from(callback)));
             self.calls.clone().lock().unwrap().insert(seq, arc_call.clone());
-            return Some(arc_call);
+
+            return CallFuture::new(Some(arc_call));
         }
 
-        None
+        CallFuture::new(None)
     }
 }
