@@ -3,6 +3,7 @@ use rpcx_client::Client;
 use std::cell::RefCell;
 use std::collections::hash_map::HashMap;
 use std::io::Error;
+use std::io::ErrorKind;
 use std::io::Result;
 use std::sync::Arc;
 use std::thread;
@@ -13,7 +14,7 @@ use serde::{Deserialize, Serialize};
 #[allow(unused_imports)]
 use rpcx_client::{ArcResp, Arg, Reply};
 
-use rpcx_protocol::SerializeType;
+use rpcx_protocol::{CompressType, SerializeType};
 
 #[derive(Default, Debug, Copy, Clone, Serialize, Deserialize)]
 struct ArithAddArgs {
@@ -25,12 +26,20 @@ struct ArithAddArgs {
 
 impl Arg for ArithAddArgs {
     fn into_bytes(&self, st: SerializeType) -> Result<Vec<u8>> {
-        serde_json::to_vec(self).map_err(|err| Error::from(err))
+        match st {
+            SerializeType::JSON => serde_json::to_vec(self).map_err(|err| Error::from(err)),
+            _ => Err(Error::new(ErrorKind::Other, "unknown format")),
+        }
     }
     fn from_slice(&mut self, st: SerializeType, data: &[u8]) -> Result<()> {
-        let arg: ArithAddArgs = serde_json::from_slice(data)?;
-        *self = arg;
-        Ok(())
+        match st {
+            SerializeType::JSON => {
+                let arg: ArithAddArgs = serde_json::from_slice(data)?;
+                *self = arg;
+                Ok(())
+            }
+            _ => Err(Error::new(ErrorKind::Other, "unknown format")),
+        }
     }
 }
 
@@ -42,13 +51,20 @@ struct ArithAddReply {
 
 impl Reply for ArithAddReply {
     fn into_bytes(&self, st: SerializeType) -> Result<Vec<u8>> {
-        serde_json::to_vec(self).map_err(|err| Error::from(err))
+        match st {
+            SerializeType::JSON => serde_json::to_vec(self).map_err(|err| Error::from(err)),
+            _ => Err(Error::new(ErrorKind::Other, "unknown format")),
+        }
     }
     fn from_slice(&mut self, st: SerializeType, data: &[u8]) -> Result<()> {
-        let reply: ArithAddReply = serde_json::from_slice(data)?;
-        *self = reply;
-
-        Ok(())
+        match st {
+            SerializeType::JSON => {
+                let reply: ArithAddReply = serde_json::from_slice(data)?;
+                *self = reply;
+                Ok(())
+            }
+            _ => Err(Error::new(ErrorKind::Other, "unknown format")),
+        }
     }
 }
 
@@ -70,6 +86,8 @@ pub fn main() {
         c.send(
             service_path,
             service_method,
+            SerializeType::JSON,
+            CompressType::CompressNone,
             metadata,
             &args,
             Some(arc_resp.clone()),
@@ -79,7 +97,7 @@ pub fn main() {
 
         let mut reply: ArithAddReply = Default::default();
         reply
-            .from_slice(SerializeType::JSON, &arc_resp.borrow())
+            .from_slice(SerializeType::JSON(), &arc_resp.borrow())
             .unwrap();
         println!("received: {:?}", &reply);
     }

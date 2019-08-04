@@ -1,3 +1,4 @@
+use futures::Future;
 use std::collections::HashMap;
 use std::io::{BufReader, BufWriter, Result, Write};
 use std::net::Shutdown;
@@ -116,6 +117,8 @@ impl Client {
         &mut self,
         service_path: String,
         service_method: String,
+        st: SerializeType,
+        ct: CompressType,
         metadata: Metadata,
         args: &dyn Arg,
         reply: Option<ArcResp>,
@@ -125,31 +128,29 @@ impl Client {
         let mut req = Message::new();
         req.set_version(0);
         req.set_message_type(MessageType::Request);
-        req.set_serialize_type(SerializeType::JSON);
+        req.set_serialize_type(st);
+        req.set_compress_type(ct);
         req.set_seq(seq);
         req.service_path = service_path.clone();
         req.service_method = service_method.clone();
         req.metadata.replace(metadata);
         let payload = args.into_bytes(SerializeType::JSON).unwrap();
         req.payload = payload;
-        if reply.is_some() {
-            let ar = reply.unwrap();
-            let callback = call::Call::new(seq, ar.clone());
-            self.calls.clone().lock().unwrap().insert(seq, callback);
-        }
-        // let test_data = vec![
-        //     8, 0, 0, 16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 39, 0, 0, 0, 5, 65, 114, 105, 116, 104,
-        //     0, 0, 0, 3, 77, 117, 108, 0, 0, 0, 0, 0, 0, 0, 15, 123, 34, 65, 34, 58, 49, 48, 44, 34,
-        //     66, 34, 58, 50, 48, 125,
-        // ];
 
         let data = req.encode();
-
         let send_data = RpcData {
             seq: seq,
             data: data,
         };
-
         self.chan_sender.clone().send(send_data).unwrap();
+
+        match reply {
+            Some(_) => {
+                let ar = reply.unwrap();
+                let callback = call::Call::new(seq, ar.clone());
+                self.calls.clone().lock().unwrap().insert(seq, callback);
+            }
+            None => {}
+        }
     }
 }
