@@ -15,17 +15,17 @@ pub trait Reply: Debug {
     fn from_slice(&mut self, st: SerializeType, data: &[u8]) -> Result<()>;
 }
 
-pub type ArcReply = Arc<RefCell<Box<dyn Reply>>>;
+pub type ArcResp = Arc<RefCell<Vec<u8>>>;
 
 #[derive(Debug)]
 pub struct Call {
     pub seq: u64,
     pub error: String,
-    pub reply: ArcReply,
+    pub reply: ArcResp,
 }
 
 impl Call {
-    pub fn new(seq: u64, ar: ArcReply) -> Self {
+    pub fn new(seq: u64, ar: ArcResp) -> Self {
         Call {
             seq: seq,
             error: String::new(),
@@ -33,3 +33,6 @@ impl Call {
         }
     }
 }
+
+unsafe impl Send for Call{}
+unsafe impl Sync for Call{}

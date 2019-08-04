@@ -49,15 +49,22 @@ impl Client {
         let write_stream = stream.try_clone()?;
         self.stream = Some(stream);
 
+        let calls = self.calls.clone();
         thread::spawn(move || {
             let mut reader = BufReader::new(read_stream.try_clone().unwrap());
 
             loop {
                 let mut msg = Message::new();
                 match msg.decode(&mut reader) {
-                    Ok(()) => {
-                        println!("{:?}", msg);
-                    }
+                    Ok(()) => match calls.lock().unwrap().get(&msg.get_seq()) {
+                        Some(call) => {
+                            call.reply
+                                .clone()
+                                .borrow_mut()
+                                .extend_from_slice(&msg.payload);
+                        }
+                        None => {}
+                    },
                     Err(error) => {
                         println!("failed to read: {}", error.to_string());
                         read_stream.shutdown(Shutdown::Both).unwrap();
@@ -78,7 +85,6 @@ impl Client {
                         return;
                     }
                     Ok(rpcdata) => {
-                        println!("{:?}", &rpcdata.data);
                         match writer.write_all(rpcdata.data.as_slice()) {
                             Ok(()) => {
                                 println!("wrote");
@@ -112,7 +118,7 @@ impl Client {
         service_method: String,
         metadata: Metadata,
         args: &dyn Arg,
-        reply: Option<ArcReply>,
+        reply: Option<ArcResp>,
     ) {
         let seq = self.seq.clone().fetch_add(1, Ordering::SeqCst);
 
@@ -126,17 +132,16 @@ impl Client {
         req.metadata.replace(metadata);
         let payload = args.into_bytes(SerializeType::JSON).unwrap();
         req.payload = payload;
-
         if reply.is_some() {
             let ar = reply.unwrap();
             let callback = call::Call::new(seq, ar.clone());
             self.calls.clone().lock().unwrap().insert(seq, callback);
         }
-        let test_data = vec![
-            8, 0, 0, 16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 39, 0, 0, 0, 5, 65, 114, 105, 116, 104,
-            0, 0, 0, 3, 77, 117, 108, 0, 0, 0, 0, 0, 0, 0, 15, 123, 34, 65, 34, 58, 49, 48, 44, 34,
-            66, 34, 58, 50, 48, 125,
-        ];
+        // let test_data = vec![
+        //     8, 0, 0, 16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 39, 0, 0, 0, 5, 65, 114, 105, 116, 104,
+        //     0, 0, 0, 3, 77, 117, 108, 0, 0, 0, 0, 0, 0, 0, 15, 123, 34, 65, 34, 58, 49, 48, 44, 34,
+        //     66, 34, 58, 50, 48, 125,
+        // ];
 
         let data = req.encode();
 

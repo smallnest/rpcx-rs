@@ -11,7 +11,7 @@ use std::time;
 use serde::{Deserialize, Serialize};
 
 #[allow(unused_imports)]
-use rpcx_client::{ArcReply, Arg, Reply};
+use rpcx_client::{ArcResp, Arg, Reply};
 
 use rpcx_protocol::SerializeType;
 
@@ -56,22 +56,31 @@ pub fn main() {
     let mut c: Client = Client::new("127.0.0.1:8972");
     c.start().map_err(|err| println!("{}", err)).unwrap();
 
+    let mut a = 1;
     loop {
         let service_path = String::from("Arith");
         let service_method = String::from("Mul");
         let metadata = HashMap::new();
-        let args = ArithAddArgs { a: 10, b: 20 };
-        let mut reply: ArithAddReply = Default::default();
-        let arcReply: ArcReply = Arc::new(RefCell::new(Box::new(reply)));
+        let args = ArithAddArgs { a: a, b: 10 };
+        a = a + 1;
+
+        let resp_data = Vec::new();
+        let arc_resp = Arc::new(RefCell::new(resp_data));
 
         c.send(
             service_path,
             service_method,
             metadata,
             &args,
-            Some(arcReply.clone()),
+            Some(arc_resp.clone()),
         );
 
-        thread::sleep(time::Duration::from_millis(10 * 1000));
+        thread::sleep(time::Duration::from_millis(5 * 1000));
+
+        let mut reply: ArithAddReply = Default::default();
+        reply
+            .from_slice(SerializeType::JSON, &arc_resp.borrow())
+            .unwrap();
+        println!("received: {:?}", &reply);
     }
 }
