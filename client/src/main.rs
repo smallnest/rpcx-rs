@@ -1,16 +1,19 @@
 use rpcx_client::Client;
 
 use std::collections::hash_map::HashMap;
+use std::error::Error as StdError;
 use std::io::Error;
 use std::io::ErrorKind;
 use std::io::Result;
 
 use futures::future::*;
+use rmp_serde as rmps;
+use rmp_serde::decode::*;
+use rmp_serde::encode::*;
 use serde::{Deserialize, Serialize};
 
+use rpcx_protocol::SerializeType;
 use rpcx_protocol::{Arg, Reply};
-
-use rpcx_protocol::{CompressType, SerializeType};
 
 #[derive(Default, Debug, Copy, Clone, Serialize, Deserialize)]
 struct ArithAddArgs {
@@ -24,6 +27,9 @@ impl Arg for ArithAddArgs {
     fn into_bytes(&self, st: SerializeType) -> Result<Vec<u8>> {
         match st {
             SerializeType::JSON => serde_json::to_vec(self).map_err(|err| Error::from(err)),
+            SerializeType::MsgPack => {
+                rmps::to_vec(self).map_err(|err| Error::new(ErrorKind::Other, err.description()))
+            }
             _ => Err(Error::new(ErrorKind::Other, "unknown format")),
         }
     }
@@ -31,6 +37,12 @@ impl Arg for ArithAddArgs {
         match st {
             SerializeType::JSON => {
                 let arg: ArithAddArgs = serde_json::from_slice(data)?;
+                *self = arg;
+                Ok(())
+            }
+            SerializeType::MsgPack => {
+                let arg: ArithAddArgs = rmps::from_slice(data)
+                    .map_err(|err| Error::new(ErrorKind::Other, err.description()))?;
                 *self = arg;
                 Ok(())
             }
@@ -49,6 +61,9 @@ impl Reply for ArithAddReply {
     fn into_bytes(&self, st: SerializeType) -> Result<Vec<u8>> {
         match st {
             SerializeType::JSON => serde_json::to_vec(self).map_err(|err| Error::from(err)),
+            SerializeType::MsgPack => {
+                rmps::to_vec(self).map_err(|err| Error::new(ErrorKind::Other, err.description()))
+            }
             _ => Err(Error::new(ErrorKind::Other, "unknown format")),
         }
     }
@@ -56,6 +71,12 @@ impl Reply for ArithAddReply {
         match st {
             SerializeType::JSON => {
                 let reply: ArithAddReply = serde_json::from_slice(data)?;
+                *self = reply;
+                Ok(())
+            }
+            SerializeType::JSON => {
+                let reply: ArithAddReply = rmps::from_slice(data)
+                    .map_err(|err| Error::new(ErrorKind::Other, err.description()))?;
                 *self = reply;
                 Ok(())
             }
@@ -67,6 +88,7 @@ impl Reply for ArithAddReply {
 pub fn main() {
     let mut c: Client = Client::new("127.0.0.1:8972");
     c.start().map_err(|err| println!("{}", err)).unwrap();
+    c.opt.serialize_type = SerializeType::MsgPack;
 
     let mut a = 1;
     loop {
@@ -84,8 +106,12 @@ pub fn main() {
         let arc_call_3 = arc_call_2.get_mut();
         let reply_data = &arc_call_3.reply_data;
 
-        let mut reply: ArithAddReply = Default::default();
-        reply.from_slice(SerializeType::JSON, &reply_data).unwrap();
-        println!("received: {:?}", &reply);
+        if arc_call_3.error.len() > 0 {
+            println!("received err:{}", &arc_call_3.error)
+        } else {
+            let mut reply: ArithAddReply = Default::default();
+            reply.from_slice(SerializeType::JSON, &reply_data).unwrap();
+            println!("received: {:?}", &reply);
+        }
     }
 }

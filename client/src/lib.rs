@@ -48,7 +48,7 @@ struct RpcData {
 /// a direct client to connect rpcx services.
 #[derive(Debug)]
 pub struct Client {
-    opt: Opt,
+    pub opt: Opt,
     addr: &'static str,
     stream: Option<TcpStream>,
     seq: Arc<AtomicU64>,
