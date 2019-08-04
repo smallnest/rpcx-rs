@@ -103,6 +103,5 @@ pub fn main() {
         let mut reply: ArithAddReply = Default::default();
         reply.from_slice(SerializeType::JSON, &reply_data).unwrap();
         println!("received: {:?}", &reply);
-        println!("received call state: {}", &arc_call_3.state);
     }
 }

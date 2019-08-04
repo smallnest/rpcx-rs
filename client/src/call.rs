@@ -1,3 +1,4 @@
+use futures::task::{current, Task};
 use futures::{Async, Future, Poll};
 use std::cell::RefCell;
 use std::fmt::Debug;
@@ -18,9 +19,15 @@ pub trait Reply: Debug {
 }
 
 #[derive(Debug)]
+pub struct Status {
+    pub ready: bool,
+    pub task: Option<Task>,
+}
+
+#[derive(Debug)]
 pub struct Call {
     pub seq: u64,
-    pub state: u8,
+    pub state: Arc<Mutex<Status>>,
     pub error: String,
     pub reply_data: Vec<u8>,
 }
@@ -29,7 +36,10 @@ impl Call {
     pub fn new(seq: u64) -> Self {
         Call {
             seq: seq,
-            state: 0,
+            state: Arc::new(Mutex::new(Status {
+                ready: false,
+                task: None,
+            })),
             error: String::new(),
             reply_data: Vec::new(),
         }
@@ -58,14 +68,14 @@ impl Future for CallFuture {
         }
 
         let arc_call = self.arc_call.as_ref().unwrap().clone();
-        loop {
-            let state = arc_call.lock().unwrap().get_mut().state;
-            match state {
-                // 0 => Ok(Async::NotReady),
-                0 => {}
-                1 => return Ok(Async::Ready(Some(arc_call))),
-                _ => return Err(String::from(&arc_call.lock().unwrap().get_mut().error)),
-            }
+        let mut arc_call_1 = arc_call.lock().unwrap();
+        let state = &arc_call_1.get_mut().state;
+        let mut status = state.lock().expect("!lock");
+        if status.ready {
+            Ok(Async::Ready(Some(arc_call.clone())))
+        } else {
+            status.task = Some(current());
+            Ok(Async::NotReady)
         }
     }
 }

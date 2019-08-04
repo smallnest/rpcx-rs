@@ -65,7 +65,11 @@ impl Client {
                             let mut internal_call_mutex = internal_call_cloned.lock().unwrap();
                             let mut internal_call = internal_call_mutex.get_mut();
                             internal_call.reply_data.extend_from_slice(&msg.payload);
-                            internal_call.state = 1;
+                            let mut status = internal_call.state.lock().unwrap();
+                            status.ready = true;
+                            if let Some(ref task) = status.task {
+                                task.notify()
+                            }
                             // TODO: error handling
                         }
                         None => {}
