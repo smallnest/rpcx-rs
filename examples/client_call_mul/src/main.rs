@@ -3,7 +3,6 @@ use rpcx_client::Client;
 use std::collections::hash_map::HashMap;
 use std::error::Error as StdError;
 
-use futures::future::*;
 use rmp_serde as rmps;
 use serde::{Deserialize, Serialize};
 
