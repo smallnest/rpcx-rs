@@ -1,9 +1,10 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::error::Error as StdError;
 use std::io::{BufReader, BufWriter, Write};
 use std::net::{Shutdown, SocketAddr, TcpStream};
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::mpsc::{self, Receiver, Sender};
+use std::sync::mpsc::{self, Receiver, SendError, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
@@ -107,7 +108,7 @@ impl Client {
             loop {
                 let mut msg = Message::new();
                 match msg.decode(&mut reader) {
-                    Ok(()) => match calls.lock().unwrap().get(&msg.get_seq()) {
+                    Ok(()) => match calls.lock().unwrap().remove(&msg.get_seq()) {
                         Some(call) => {
                             let internal_call_cloned = call.clone();
                             let mut internal_call_mutex = internal_call_cloned.lock().unwrap();
@@ -128,6 +129,7 @@ impl Client {
                     },
                     Err(error) => {
                         println!("failed to read: {}", error.to_string());
+                        // TODO: remove all calls
                         read_stream.shutdown(Shutdown::Both).unwrap();
                     }
                 }
@@ -135,7 +137,6 @@ impl Client {
         });
 
         let chan_receiver = self.chan_receiver.clone();
-
         thread::spawn(move || {
             let mut writer = BufWriter::new(write_stream.try_clone().unwrap());
             loop {
@@ -152,6 +153,7 @@ impl Client {
                             }
                             Err(error) => {
                                 println!("failed to write: {}", error.to_string());
+                                // TODO: remove calls
                                 write_stream.shutdown(Shutdown::Both).unwrap();
                             }
                         }
@@ -162,6 +164,7 @@ impl Client {
                             }
                             Err(error) => {
                                 println!("failed to flush: {}", error.to_string());
+                                // TODO: remove calls
                                 write_stream.shutdown(Shutdown::Both).unwrap();
                             }
                         }
@@ -198,12 +201,7 @@ impl Client {
 
         let data = req.encode();
 
-        let send_data = RpcData {
-            seq: seq,
-            data: data,
-        };
-        self.chan_sender.clone().send(send_data).unwrap();
-
+        let mut call_future = CallFuture::new(None);
         if !is_oneway && !is_heartbeat {
             let callback = Call::new(seq);
             let arc_call = Arc::new(Mutex::new(RefCell::from(callback)));
@@ -213,10 +211,58 @@ impl Client {
                 .unwrap()
                 .insert(seq, arc_call.clone());
 
-            return CallFuture::new(Some(arc_call));
+            call_future = CallFuture::new(Some(arc_call));
         }
 
-        CallFuture::new(None)
+        let send_data = RpcData {
+            seq: seq,
+            data: data,
+        };
+        match self.chan_sender.clone().send(send_data) {
+            Ok(_) => {}
+            Err(err) => self.remove_call_with_senderr(err),
+        }
+
+        call_future
+    }
+
+    fn remove_call_with_senderr(&mut self, err: SendError<RpcData>) {
+        let seq = err.0.seq;
+        let calls = self.calls.clone();
+        let mut m = calls.lock().unwrap();
+        match m.remove(&seq) {
+            Some(call) => {
+                let internal_call_cloned = call.clone();
+                let mut internal_call_mutex = internal_call_cloned.lock().unwrap();
+                let internal_call = internal_call_mutex.get_mut();
+                internal_call.error = String::from(err.description());
+                let mut status = internal_call.state.lock().unwrap();
+                status.ready = true;
+                if let Some(ref task) = status.task {
+                    task.notify()
+                }
+            }
+            None => {}
+        }
+    }
+
+    fn remove_call_with_err<T: StdError>(&mut self, seq: u64, err: T) {
+        let calls = self.calls.clone();
+        let m = calls.lock().unwrap();
+        match m.get(&seq) {
+            Some(call) => {
+                let internal_call_cloned = call.clone();
+                let mut internal_call_mutex = internal_call_cloned.lock().unwrap();
+                let internal_call = internal_call_mutex.get_mut();
+                internal_call.error = String::from(err.description());
+                let mut status = internal_call.state.lock().unwrap();
+                status.ready = true;
+                if let Some(ref task) = status.task {
+                    task.notify()
+                }
+            }
+            None => {}
+        }
     }
 
     pub fn call<T>(
