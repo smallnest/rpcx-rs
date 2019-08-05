@@ -43,7 +43,7 @@ impl Default for Opt {
 struct RpcData {
     seq: u64,
     data: Vec<u8>,
-} 
+}
 
 /// a direct client to connect rpcx services.
 #[derive(Debug)]
@@ -194,10 +194,11 @@ impl Client {
         req.service_path = service_path.clone();
         req.service_method = service_method.clone();
         req.metadata.replace(metadata);
-        let payload = args.into_bytes(SerializeType::JSON).unwrap();
+        let payload = args.into_bytes(self.opt.serialize_type).unwrap();
         req.payload = payload;
 
         let data = req.encode();
+
         let send_data = RpcData {
             seq: seq,
             data: data,

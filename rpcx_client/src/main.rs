@@ -15,23 +15,19 @@ use serde::{Deserialize, Serialize};
 use rpcx_derive::*;
 use rpcx_protocol::RpcxParam;
 use rpcx_protocol::SerializeType;
- 
 #[derive(RpcxParam, Default, Debug, Copy, Clone, Serialize, Deserialize)]
-struct ArithAddArgs { 
+struct ArithAddArgs {
     #[serde(rename = "A")]
     a: u64,
     #[serde(rename = "B")]
     b: u64,
-} 
+}
 
-
-#[derive(RpcxParam,Default, Debug, Copy, Clone, Serialize, Deserialize)]
+#[derive(RpcxParam, Default, Debug, Copy, Clone, Serialize, Deserialize)]
 struct ArithAddReply {
     #[serde(rename = "C")]
     c: u64,
 }
-
-
 
 pub fn main() {
     let mut c: Client = Client::new("127.0.0.1:8972");
@@ -58,7 +54,7 @@ pub fn main() {
             println!("received err:{}", &arc_call_3.error)
         } else {
             let mut reply: ArithAddReply = Default::default();
-            reply.from_slice(SerializeType::JSON, &reply_data).unwrap();
+            reply.from_slice(c.opt.serialize_type, &reply_data).unwrap();
             println!("received: {:?}", &reply);
         }
     }
