@@ -1,9 +1,9 @@
 [workspace]
 
 members = [
-    "protocol",
+    "rpcx_protocol",
     "rpcx_derive",
-    "client",
+    "rpcx_client",
     "rpcx_server",
 ]
  
