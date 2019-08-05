@@ -16,5 +16,5 @@ edition = "2018"
 
 [dependencies]
 futures = "0.1.28"
-rpcx_protocol =  { path = "../rpcx_protocol" }
-rpcx_derive =  { path = "../rpcx_derive" }
+rpcx_protocol =  { version = "0.1.0", path = "../rpcx_protocol" }
+rpcx_derive =  { version = "0.1.0", path = "../rpcx_derive" }
