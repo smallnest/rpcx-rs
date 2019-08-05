@@ -37,20 +37,16 @@ pub fn main() {
         let args = ArithAddArgs { a: a, b: 10 };
         a = a + 1;
 
-        let f = c.send(service_path, service_method, false, false, metadata, &args);
+        let reply: Option<Result<ArithAddReply>> =
+            c.call(service_path, service_method, false, metadata, &args);
+        if reply.is_none() {
+            continue;
+        }
 
-        let arc_call = f.wait().unwrap();
-        let arc_call_1 = arc_call.unwrap().clone();
-        let mut arc_call_2 = arc_call_1.lock().unwrap();
-        let arc_call_3 = arc_call_2.get_mut();
-        let reply_data = &arc_call_3.reply_data;
-
-        if arc_call_3.error.len() > 0 {
-            println!("received err:{}", &arc_call_3.error)
-        } else {
-            let mut reply: ArithAddReply = Default::default();
-            reply.from_slice(c.opt.serialize_type, &reply_data).unwrap();
-            println!("received: {:?}", &reply);
+        let result_reply = reply.unwrap();
+        match result_reply {
+            Ok(r) => println!("received: {:?}", r),
+            Err(err) => println!("received err:{}", err),
         }
     }
 }

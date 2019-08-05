@@ -8,6 +8,8 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 
+use futures::future::*;
+
 use rpcx_protocol::call::*;
 use rpcx_protocol::*;
 
@@ -215,5 +217,38 @@ impl Client {
         }
 
         CallFuture::new(None)
+    }
+
+    pub fn call<T>(
+        &mut self,
+        service_path: String,
+        service_method: String,
+        is_oneway: bool,
+        metadata: Metadata,
+        args: &dyn RpcxParam,
+    ) -> Option<Result<T>> where T: RpcxParam+Default{
+        let f = self.send(service_path, service_method, is_oneway, false, metadata, args);
+
+        if is_oneway {
+            return None
+        }
+
+        let arc_call = f.wait().unwrap();
+        let arc_call_1 = arc_call.unwrap().clone();
+        let mut arc_call_2 = arc_call_1.lock().unwrap();
+        let arc_call_3 = arc_call_2.get_mut();
+        let reply_data = &arc_call_3.reply_data;
+
+        if arc_call_3.error.len() > 0 {
+            let err = &arc_call_3.error;
+            return Some(Err(Error::from(String::from(err))));
+        } 
+
+
+        let mut reply: T = Default::default();
+        match reply.from_slice(self.opt.serialize_type, &reply_data) {
+            Ok(()) => Some(Ok(reply)),
+            Err(err) => Some(Err(Error::from(err))),
+        }
     }
 }
