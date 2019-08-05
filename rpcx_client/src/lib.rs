@@ -1,6 +1,6 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::io::{BufReader, BufWriter, Error, ErrorKind, Result, Write};
+use std::io::{BufReader, BufWriter, Write};
 use std::net::{Shutdown, SocketAddr, TcpStream};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::mpsc::{self, Receiver, Sender};
@@ -9,7 +9,7 @@ use std::thread;
 use std::time::Duration;
 
 use rpcx_protocol::call::*;
-use rpcx_protocol::message::*;
+use rpcx_protocol::*;
 
 #[derive(Debug, Copy, Clone)]
 pub struct Opt {
@@ -77,7 +77,7 @@ impl Client {
             let socket_addr: SocketAddr = self
                 .addr
                 .parse()
-                .map_err(|err| Error::new(ErrorKind::Other, err))?;
+                .map_err(|err| Error::new(ErrorKind::Network, err))?;
             stream = TcpStream::connect_timeout(&socket_addr, self.opt.connect_timeout)?;
         }
 

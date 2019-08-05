@@ -2,15 +2,13 @@ use rpcx_client::Client;
 
 use std::collections::hash_map::HashMap;
 use std::error::Error as StdError;
-use std::io::{Error,ErrorKind,Result};
 
 use futures::future::*;
 use rmp_serde as rmps;
 use serde::{Deserialize, Serialize};
 
 use rpcx_derive::*;
-use rpcx_protocol::RpcxParam;
-use rpcx_protocol::SerializeType;
+use rpcx_protocol::{Error, ErrorKind, Result, RpcxParam, SerializeType};
 
 #[derive(RpcxParam, Default, Debug, Copy, Clone, Serialize, Deserialize)]
 struct ArithAddArgs {

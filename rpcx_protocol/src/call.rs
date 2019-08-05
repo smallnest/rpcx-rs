@@ -1,8 +1,8 @@
+use crate::Result;
 use futures::task::{current, Task};
 use futures::{Async, Future, Poll};
 use std::cell::RefCell;
 use std::fmt::Debug;
-use std::io::Result;
 use std::sync::Arc;
 use std::sync::Mutex;
 

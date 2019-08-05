@@ -1,13 +1,13 @@
+use byteorder::{BigEndian, ByteOrder};
 use enum_primitive_derive::Primitive;
 use num_traits::{FromPrimitive, ToPrimitive};
 use strum_macros::{Display, EnumIter, EnumString};
 
-use byteorder::{BigEndian, ByteOrder};
 use std::cell::RefCell;
 use std::collections::hash_map::HashMap;
 use std::io::Read;
-use std::io::Result;
-use std::string::String;
+
+use crate::{Error, Result};
 
 const MAGIC_NUMBER: u8 = 0x08;
 const SERVICE_ERROR: &str = "__rpcx_error__";
@@ -196,8 +196,11 @@ impl RpcxMessage for Message {
         }
         start = start + 4 + len;
         // payload
-        let len = read_len(&buf[start..start + 4]) as usize; // TODO: for checking
+        let len = read_len(&buf[start..start + 4]) as usize;
         let payload = &buf[start + 4..];
+        if len != payload.len() {
+            return Err(Error::from("invalid payload length"));
+        }
 
         let mut vp = Vec::with_capacity(payload.len());
         vp.extend_from_slice(&payload);
