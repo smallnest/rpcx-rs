@@ -43,7 +43,7 @@ impl Default for Opt {
 struct RpcData {
     seq: u64,
     data: Vec<u8>,
-}
+} 
 
 /// a direct client to connect rpcx services.
 #[derive(Debug)]
@@ -181,7 +181,7 @@ impl Client {
         is_oneway: bool,
         is_heartbeat: bool,
         metadata: Metadata,
-        args: &dyn Arg,
+        args: &dyn RpcxParam,
     ) -> CallFuture {
         let seq = self.seq.clone().fetch_add(1, Ordering::SeqCst);
 

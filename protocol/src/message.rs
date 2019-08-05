@@ -270,9 +270,9 @@ impl RpcxMessage for Message {
                 let metadata2 = metadata.borrow();
                 let err_msg = &metadata2.get(&ServiceError.to_owned())?;
                 return Some(String::from(*err_msg));
-            },
+            }
             _ => None,
-        } 
+        }
     }
 }
 

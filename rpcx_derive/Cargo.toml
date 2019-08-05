@@ -1,16 +1,17 @@
 [package]
-name = "rpcx_client"
+name = "rpcx_derive"
 version = "0.1.0"
 authors = ["smallnest <smallnest@gmail.com>"]
 edition = "2018"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
-tokio = "0.1.22"
-futures = "0.1.28"
+proc-macro2-next = "1.0.0-rc1"
+syn = "0.15"
+quote = "0.6"
 serde = { version = "1.0.98",features = ["derive"]}
 serde_json = "1.0.40" 
 rmp-serde = "0.13.7"
 rpcx_protocol =  { path = "../protocol" }
-rpcx_derive =  { path = "../rpcx_derive" }
+
+[lib]
+proc-macro = true

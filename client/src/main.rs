@@ -12,78 +12,26 @@ use rmp_serde::decode::*;
 use rmp_serde::encode::*;
 use serde::{Deserialize, Serialize};
 
+use rpcx_derive::*;
+use rpcx_protocol::RpcxParam;
 use rpcx_protocol::SerializeType;
-use rpcx_protocol::{Arg, Reply};
-
-#[derive(Default, Debug, Copy, Clone, Serialize, Deserialize)]
-struct ArithAddArgs {
+ 
+#[derive(RpcxParam, Default, Debug, Copy, Clone, Serialize, Deserialize)]
+struct ArithAddArgs { 
     #[serde(rename = "A")]
     a: u64,
     #[serde(rename = "B")]
     b: u64,
-}
+} 
 
-impl Arg for ArithAddArgs {
-    fn into_bytes(&self, st: SerializeType) -> Result<Vec<u8>> {
-        match st {
-            SerializeType::JSON => serde_json::to_vec(self).map_err(|err| Error::from(err)),
-            SerializeType::MsgPack => {
-                rmps::to_vec(self).map_err(|err| Error::new(ErrorKind::Other, err.description()))
-            }
-            _ => Err(Error::new(ErrorKind::Other, "unknown format")),
-        }
-    }
-    fn from_slice(&mut self, st: SerializeType, data: &[u8]) -> Result<()> {
-        match st {
-            SerializeType::JSON => {
-                let arg: ArithAddArgs = serde_json::from_slice(data)?;
-                *self = arg;
-                Ok(())
-            }
-            SerializeType::MsgPack => {
-                let arg: ArithAddArgs = rmps::from_slice(data)
-                    .map_err(|err| Error::new(ErrorKind::Other, err.description()))?;
-                *self = arg;
-                Ok(())
-            }
-            _ => Err(Error::new(ErrorKind::Other, "unknown format")),
-        }
-    }
-}
 
-#[derive(Default, Debug, Copy, Clone, Serialize, Deserialize)]
+#[derive(RpcxParam,Default, Debug, Copy, Clone, Serialize, Deserialize)]
 struct ArithAddReply {
     #[serde(rename = "C")]
     c: u64,
 }
 
-impl Reply for ArithAddReply {
-    fn into_bytes(&self, st: SerializeType) -> Result<Vec<u8>> {
-        match st {
-            SerializeType::JSON => serde_json::to_vec(self).map_err(|err| Error::from(err)),
-            SerializeType::MsgPack => {
-                rmps::to_vec(self).map_err(|err| Error::new(ErrorKind::Other, err.description()))
-            }
-            _ => Err(Error::new(ErrorKind::Other, "unknown format")),
-        }
-    }
-    fn from_slice(&mut self, st: SerializeType, data: &[u8]) -> Result<()> {
-        match st {
-            SerializeType::JSON => {
-                let reply: ArithAddReply = serde_json::from_slice(data)?;
-                *self = reply;
-                Ok(())
-            }
-            SerializeType::JSON => {
-                let reply: ArithAddReply = rmps::from_slice(data)
-                    .map_err(|err| Error::new(ErrorKind::Other, err.description()))?;
-                *self = reply;
-                Ok(())
-            }
-            _ => Err(Error::new(ErrorKind::Other, "unknown format")),
-        }
-    }
-}
+
 
 pub fn main() {
     let mut c: Client = Client::new("127.0.0.1:8972");

@@ -2,8 +2,9 @@
 
 members = [
     "protocol",
+    "rpcx_derive",
     "client",
-    "server",
+    "rpcx_server",
 ]
  
 [profile.release]
