@@ -6,6 +6,7 @@ members = [
     "rpcx_client",
     "rpcx_server",
     "examples/client_call_mul",
+    "examples/client_call_mul_async",
 ]
  
 [profile.release]

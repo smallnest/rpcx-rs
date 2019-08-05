@@ -226,11 +226,21 @@ impl Client {
         is_oneway: bool,
         metadata: Metadata,
         args: &dyn RpcxParam,
-    ) -> Option<Result<T>> where T: RpcxParam+Default{
-        let f = self.send(service_path, service_method, is_oneway, false, metadata, args);
+    ) -> Option<Result<T>>
+    where
+        T: RpcxParam + Default,
+    {
+        let f = self.send(
+            service_path,
+            service_method,
+            is_oneway,
+            false,
+            metadata,
+            args,
+        );
 
         if is_oneway {
-            return None
+            return None;
         }
 
         let arc_call = f.wait().unwrap();
@@ -242,13 +252,48 @@ impl Client {
         if arc_call_3.error.len() > 0 {
             let err = &arc_call_3.error;
             return Some(Err(Error::from(String::from(err))));
-        } 
-
+        }
 
         let mut reply: T = Default::default();
         match reply.from_slice(self.opt.serialize_type, &reply_data) {
             Ok(()) => Some(Ok(reply)),
             Err(err) => Some(Err(Error::from(err))),
         }
+    }
+
+    pub fn acall<T>(
+        &mut self,
+        service_path: String,
+        service_method: String,
+        metadata: Metadata,
+        args: &dyn RpcxParam,
+    ) -> Box<dyn Future<Item = Result<T>, Error = Error>>
+    where
+        T: RpcxParam + Default,
+    {
+        let f = self.send(service_path, service_method, false, false, metadata, args);
+
+        let st = self.opt.serialize_type;
+        let rt = f
+            .map(move |opt_arc_call| {
+                let arc_call_1 = opt_arc_call.unwrap().clone();
+                let mut arc_call_2 = arc_call_1.lock().unwrap();
+                let arc_call_3 = arc_call_2.get_mut();
+                let reply_data = &arc_call_3.reply_data;
+
+                if arc_call_3.error.len() > 0 {
+                    let err = &arc_call_3.error;
+                    return Err(Error::from(String::from(err)));
+                }
+
+                let mut reply: T = Default::default();
+                match reply.from_slice(st, &reply_data) {
+                    Ok(()) => return Ok(reply),
+                    Err(err) => return Err(Error::from(err)),
+                }
+            })
+            .map_err(|err| Error::from(err));
+
+        Box::new(rt)
     }
 }
