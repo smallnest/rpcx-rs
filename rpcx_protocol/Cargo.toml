@@ -4,6 +4,7 @@ version = "0.1.0"
 authors = ["smallnest@gmail.com"]
 license = "MIT"
 readme = "README.md"
+description = "A rpc/microservice framework."
 repository = "https://github.com/smallnest/rpcx-rs"
 documentation = "https://docs.rs/rpcx-protocol/"
 homepage = "https://crates.io/crates/rpcx-protocol"
