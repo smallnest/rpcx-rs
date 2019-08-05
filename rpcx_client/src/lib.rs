@@ -1,18 +1,15 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::io::{BufReader, BufWriter, Error, ErrorKind, Result, Write};
-use std::net::Shutdown;
-use std::net::{SocketAddr, TcpStream, ToSocketAddrs};
-use std::sync::atomic::AtomicU64;
-use std::sync::atomic::Ordering;
+use std::net::{Shutdown, SocketAddr, TcpStream};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 
-use rpcx_protocol::message::*;
-
 use rpcx_protocol::call::*;
+use rpcx_protocol::message::*;
 
 #[derive(Debug, Copy, Clone)]
 pub struct Opt {

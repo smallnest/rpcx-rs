@@ -1,17 +1,10 @@
-#![recursion_limit="128"]
+#![recursion_limit = "128"]
 
 extern crate proc_macro;
 
 use proc_macro::TokenStream;
 use quote::quote;
 use syn::{parse_macro_input, DeriveInput};
-
-use rmp_serde as rmps;
-use rmp_serde::decode::*;
-use rmp_serde::encode::*;
-use serde::{Deserialize, Serialize};
-
-use rpcx_protocol::call::*;
 
 #[proc_macro_derive(RpcxParam)]
 pub fn rpcx_param(input: TokenStream) -> TokenStream {

@@ -10,7 +10,7 @@ use std::io::Result;
 use std::string::String;
 
 const MAGIC_NUMBER: u8 = 0x08;
-const ServiceError: &str = "__rpcx_error__";
+const SERVICE_ERROR: &str = "__rpcx_error__";
 
 #[derive(Debug, Copy, Clone, Display, PartialEq, EnumIter, EnumString, Primitive)]
 pub enum MessageType {
@@ -268,7 +268,7 @@ impl RpcxMessage for Message {
             Some(MessageStatusType::Error) => {
                 let metadata = &self.metadata;
                 let metadata2 = metadata.borrow();
-                let err_msg = &metadata2.get(&ServiceError.to_owned())?;
+                let err_msg = &metadata2.get(&SERVICE_ERROR.to_owned())?;
                 return Some(String::from(*err_msg));
             }
             _ => None,

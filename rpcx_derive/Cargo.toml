@@ -5,7 +5,6 @@ authors = ["smallnest <smallnest@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-proc-macro2-next = "1.0.0-rc1"
 syn = "0.15"
 quote = "0.6"
 serde = { version = "1.0.98",features = ["derive"]}

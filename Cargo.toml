@@ -5,6 +5,7 @@ members = [
     "rpcx_derive",
     "rpcx_client",
     "rpcx_server",
+    "examples/client_call_mul",
 ]
  
 [profile.release]
