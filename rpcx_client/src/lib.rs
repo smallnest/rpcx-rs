@@ -129,14 +129,16 @@ impl Client {
                     },
                     Err(error) => {
                         println!("failed to read: {}", error.to_string());
-                        // TODO: remove all calls
+                        Self::drain_calls(calls, error);
                         read_stream.shutdown(Shutdown::Both).unwrap();
+                        return;
                     }
                 }
             }
         });
 
         let chan_receiver = self.chan_receiver.clone();
+        let send_calls = self.calls.clone();
         thread::spawn(move || {
             let mut writer = BufWriter::new(write_stream.try_clone().unwrap());
             loop {
@@ -153,8 +155,9 @@ impl Client {
                             }
                             Err(error) => {
                                 println!("failed to write: {}", error.to_string());
-                                // TODO: remove calls
+                                Self::drain_calls(send_calls.clone(), error);
                                 write_stream.shutdown(Shutdown::Both).unwrap();
+                                return;
                             }
                         }
 
@@ -164,8 +167,9 @@ impl Client {
                             }
                             Err(error) => {
                                 println!("failed to flush: {}", error.to_string());
-                                // TODO: remove calls
+                                Self::drain_calls(send_calls.clone(), error);
                                 write_stream.shutdown(Shutdown::Both).unwrap();
+                                return;
                             }
                         }
                     }
@@ -246,6 +250,22 @@ impl Client {
         }
     }
 
+    fn drain_calls<T: StdError>(calls: Arc<Mutex<HashMap<u64, ArcCall>>>, err: T) {
+        let mut m = calls.lock().unwrap();
+        for (_, call) in m.drain().take(1) {
+            let internal_call_cloned = call.clone();
+            let mut internal_call_mutex = internal_call_cloned.lock().unwrap();
+            let internal_call = internal_call_mutex.get_mut();
+            internal_call.error = String::from(err.description());
+            let mut status = internal_call.state.lock().unwrap();
+            status.ready = true;
+            if let Some(ref task) = status.task {
+                task.notify()
+            }
+        }
+    }
+
+    #[allow(dead_code)]
     fn remove_call_with_err<T: StdError>(&mut self, seq: u64, err: T) {
         let calls = self.calls.clone();
         let m = calls.lock().unwrap();
