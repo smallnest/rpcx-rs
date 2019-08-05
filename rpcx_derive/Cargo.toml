@@ -1,7 +1,14 @@
 [package]
 name = "rpcx_derive"
 version = "0.1.0"
-authors = ["smallnest <smallnest@gmail.com>"]
+authors = ["smallnest@gmail.com"]
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/smallnest/rpcx-derive"
+documentation = "https://docs.rs/rpcx-derive/"
+homepage = "https://crates.io/crates/rpcx-derive"
+keywords = ["rpc", "network", "microservice"]
+categories = ["network-programming"]
 edition = "2018"
 
 [dependencies]

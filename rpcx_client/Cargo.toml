@@ -1,7 +1,14 @@
 [package]
 name = "rpcx_client"
 version = "0.1.0"
-authors = ["smallnest <smallnest@gmail.com>"]
+authors = ["smallnest@gmail.com"]
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/smallnest/rpcx-rs"
+documentation = "https://docs.rs/rpcx-client/"
+homepage = "https://crates.io/crates/rpcx-client"
+keywords = ["rpc", "network", "microservice"]
+categories = ["network-programming"]
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
