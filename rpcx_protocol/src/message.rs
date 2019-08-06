@@ -271,8 +271,8 @@ impl RpcxMessage for Message {
             Some(MessageStatusType::Error) => {
                 let metadata = &self.metadata;
                 let metadata2 = metadata.borrow();
-                let err_msg = &metadata2.get(&SERVICE_ERROR.to_owned())?;
-                return Some(String::from(*err_msg));
+                let err_msg = metadata2.get(&SERVICE_ERROR.to_owned())?;
+                return Some(String::from(err_msg));
             }
             _ => None,
         }
