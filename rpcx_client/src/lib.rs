@@ -179,7 +179,7 @@ impl Client {
 
         Ok(())
     }
-
+ 
     pub fn send(
         &mut self,
         service_path: String,

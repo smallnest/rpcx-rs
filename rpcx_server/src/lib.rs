@@ -1,7 +1,14 @@
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
-    }
+use std::any::Any;
+
+use rpcx_derive::*;
+use rpcx_protocol::{Error, ErrorKind, Result, RpcxParam, SerializeType};
+
+
+#[derive(Debug)]
+pub struct Server {
+    
 }
+
+impl Server {
+}
+
