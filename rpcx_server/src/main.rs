@@ -22,8 +22,6 @@ struct ArithAddReply {
     c: u64,
 }
 
-type RpcxFn = fn(&[u8]) -> Result<Vec<u8>>;
-
 fn test(args: ArithAddArgs) -> ArithAddReply {
     ArithAddReply { c: args.a + args.b }
 }
@@ -43,6 +41,6 @@ fn main() {
         .get_fn(String::from("Arith"), String::from("Add"))
         .unwrap();
     let s = String::from(r#"{"A":1,"B":2}"#);
-    let reply = f(s.as_ref()).unwrap();
+    let reply = f(s.as_ref(),SerializeType::JSON).unwrap();
     println!("reply:{}", String::from_utf8(reply).unwrap());
 }

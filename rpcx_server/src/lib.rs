@@ -2,9 +2,9 @@ use std::boxed::Box;
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
-use rpcx_protocol::Result;
+use rpcx_protocol::{Result, SerializeType};
 
-pub type RpcxFn = fn(&[u8]) -> Result<Vec<u8>>;
+pub type RpcxFn = fn(&[u8], SerializeType) -> Result<Vec<u8>>;
 
 pub struct Server {
     pub services: Arc<RwLock<HashMap<String, Box<RpcxFn>>>>,
@@ -35,11 +35,11 @@ impl Server {
 #[macro_export]
 macro_rules! register_func {
     ($rpc_server:expr, $service_path:expr, $service_method:expr, $service_fn:expr, $arg_type:expr, $reply_type:expr) => {{
-        let f: RpcxFn = |x| {
+        let f: RpcxFn = |x, st| {
             let mut args: ArithAddArgs = Default::default();
-            args.from_slice(SerializeType::JSON, x)?;
+            args.from_slice(st, x)?;
             let reply: ArithAddReply = $service_fn(args);
-            reply.into_bytes(SerializeType::JSON)
+            reply.into_bytes(st)
         };
         $rpc_server.register_fn($service_path.to_string(), $service_method.to_string(), f);
     }};
