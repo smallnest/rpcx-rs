@@ -1,28 +1,10 @@
-use rpcx_client::Client;
-
 use std::collections::hash_map::HashMap;
-use std::error::Error as StdError;
 
 use futures::future::*;
-use rmp_serde as rmps;
-use serde::{Deserialize, Serialize};
 
-use rpcx_derive::*;
-use rpcx_protocol::{Error, ErrorKind, Result, RpcxParam, SerializeType};
-
-#[derive(RpcxParam, Default, Debug, Copy, Clone, Serialize, Deserialize)]
-struct ArithAddArgs {
-    #[serde(rename = "A")]
-    a: u64,
-    #[serde(rename = "B")]
-    b: u64,
-}
-
-#[derive(RpcxParam, Default, Debug, Copy, Clone, Serialize, Deserialize)]
-struct ArithAddReply {
-    #[serde(rename = "C")]
-    c: u64,
-}
+use rpcx_protocol::{Result, SerializeType};
+use mul_model::*;
+use rpcx_client::Client;
 
 pub fn main() {
     let mut c: Client = Client::new("127.0.0.1:8972");

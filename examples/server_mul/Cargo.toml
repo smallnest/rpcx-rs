@@ -1,5 +1,5 @@
 [package]
-name = "client_call_mul"
+name = "server_mul"
 version = "0.1.0"
 authors = ["smallnest <smallnest@gmail.com>"]
 edition = "2018"
@@ -8,6 +8,5 @@ edition = "2018"
 
 [dependencies]
 rpcx_protocol =  { version = "0.1.0", path = "../../rpcx_protocol" }
-rpcx_derive =  { version = "0.1.0", path = "../../rpcx_derive" }
-rpcx_client =  { version = "0.1.0", path = "../../rpcx_client" }
+rpcx_server =  { version = "0.1.0", path = "../../rpcx_server" }
 mul_model =  { version = "0.1.0", path = "../mul_model" }

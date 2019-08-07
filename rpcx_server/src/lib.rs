@@ -5,7 +5,6 @@ use std::sync::{Arc, RwLock};
 use std::net::SocketAddr;
 use std::thread;
 
-use rpcx_protocol::call::*;
 use rpcx_protocol::*;
 use std::io::{BufReader, BufWriter, Write};
 use std::net::{Shutdown, TcpListener, TcpStream};
@@ -50,8 +49,7 @@ impl Server {
 
         for stream in listener.incoming() {
             match stream {
-                Ok(mut stream) => {
-                    let response = b"Hello World";
+                Ok(stream) => {
                     Server::process(&self.services, stream);
                 }
                 Err(e) => {
@@ -64,42 +62,61 @@ impl Server {
     }
 
     fn process(services: &Arc<RwLock<HashMap<String, Box<RpcxFn>>>>, stream: TcpStream) {
-        let mut reader = BufReader::new(stream.try_clone().unwrap());
-
         let services_cloned = services.clone();
-        
-        thread::spawn(move || loop {
-            let mut msg = Message::new();
-            match msg.decode(&mut reader) {
-                Ok(()) => {
-                    let service_path = &msg.service_path;
+
+        let local_steam = stream.try_clone().unwrap();
+
+        thread::spawn(move || {
+            let mut reader = BufReader::new(stream.try_clone().unwrap());
+            loop {
+                let mut msg = Message::new();
+                match msg.decode(&mut reader) {
+                    Ok(()) => {
+                        let service_path = &msg.service_path;
                         let service_method = &msg.service_method;
-                        let seq =& msg.get_seq();
-                        let st = (&msg).get_serialize_type().unwrap();
-                        let mut payload = Vec::with_capacity(msg.payload.len());
-                        payload.extend_from_slice(&msg.payload);
-
                         let key = format!("{}.{}", service_path, service_method);
-
-                    thread::spawn(move || {
-                        
-                        let map = services_cloned.read().unwrap();
+                        let map = &services_cloned.read().unwrap();
                         match map.get(&key) {
                             Some(box_fn) => {
                                 let f = **box_fn;
-                                let reply = f(&payload,st).unwrap();
-                            },
+                                let mut reply_msg = msg.get_reply().unwrap();
+                                let mut payload = Vec::with_capacity(msg.payload.len());
+                                payload.extend_from_slice(&msg.payload);
+
+                                let local_steam_in_child = local_steam.try_clone().unwrap();
+                                thread::spawn(move || {
+                                    let payload_data = payload;
+                                    let reply =
+                                        f(&payload_data, reply_msg.get_serialize_type().unwrap())
+                                            .unwrap();
+                                    reply_msg.payload = reply;
+                                    let data = reply_msg.encode();
+
+                                    let mut writer =
+                                        BufWriter::new(local_steam_in_child.try_clone().unwrap());
+                                    &writer.write_all(&data);
+                                    &writer.flush();
+                                });
+                            }
                             None => {
-
-                            },
+                                let err = format!("service {} not found", key);
+                                let reply_msg = msg.get_reply().unwrap();
+                                let mut metadata = reply_msg.metadata.borrow_mut();
+                                (*metadata).insert(SERVICE_ERROR.to_string(), err);
+                                drop(metadata);
+                                let data = reply_msg.encode();
+                                println!("@@@@:{:?}", &reply_msg);
+                                let mut writer = BufWriter::new(local_steam.try_clone().unwrap());
+                                writer.write_all(&data).unwrap();
+                                writer.flush().unwrap();
+                            }
                         }
-
-                    }); 
-                }
-                Err(error) => {
-                    println!("failed to read: {}", error.to_string());
-                    stream.shutdown(Shutdown::Both).unwrap();
-                    return;
+                    }
+                    Err(error) => {
+                        println!("failed to read: {}", error.to_string());
+                        local_steam.shutdown(Shutdown::Both).unwrap();
+                        return;
+                    }
                 }
             }
         });

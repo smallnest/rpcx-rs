@@ -10,7 +10,7 @@ use std::io::Read;
 use crate::{Error, Result};
 
 const MAGIC_NUMBER: u8 = 0x08;
-const SERVICE_ERROR: &str = "__rpcx_error__";
+pub const SERVICE_ERROR: &str = "__rpcx_error__";
 
 #[derive(Debug, Copy, Clone, Display, PartialEq, EnumIter, EnumString, Primitive)]
 pub enum MessageType {
@@ -85,6 +85,20 @@ impl Message {
         msg.header[0] = MAGIC_NUMBER;
         msg.metadata = RefCell::new(HashMap::new());
         msg
+    }
+
+    pub fn get_reply(&self) -> Result<Self> {
+        let mut reply = Message::new();
+        reply.set_version(self.get_version());
+        reply.set_compress_type(self.get_compress_type().unwrap());
+        reply.set_message_status_type(MessageStatusType::Normal);
+        reply.set_message_type(MessageType::Response);
+        reply.set_serialize_type(self.get_serialize_type().unwrap());
+        reply.set_seq(self.get_seq());
+        reply.service_path = self.service_path.clone();
+        reply.service_method = self.service_method.clone();
+
+        Ok(reply)
     }
 }
 
