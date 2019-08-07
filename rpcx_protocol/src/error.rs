@@ -60,7 +60,6 @@ impl From<&'static str> for Error {
     }
 }
 
-
 impl From<String> for Error {
     #[inline]
     fn from(s: String) -> Error {
@@ -84,6 +83,12 @@ impl From<std::io::Error> for Error {
     }
 }
 
+impl From<Box<dyn std::error::Error+ Send + Sync>> for Error {
+    #[inline]
+    fn from(err: Box<dyn std::error::Error+ Send + Sync>) -> Error {
+        Error::_new(ErrorKind::Other, err) 
+    }
+}
 impl From<ErrorKind> for Error {
     #[inline]
     fn from(kind: ErrorKind) -> Error {
