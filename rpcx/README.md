@@ -1,4 +1,4 @@
-# rpcx-rs
+# rpcx
 
 [![Build Status](https://travis-ci.org/smallnest/rpcx-rs.svg?branch=master)](https://travis-ci.org/smallnest/rpcx-rs)
 [![Crate](https://img.shields.io/crates/v/rpcx.svg)](https://crates.io/crates/rpcx)

@@ -1,6 +1,5 @@
 use mul_model::{ArithAddArgs, ArithAddReply};
-use rpcx_protocol::{RpcxParam, SerializeType};
-use rpcx_server::*;
+use rpcx::*;
 
 fn add(args: ArithAddArgs) -> ArithAddReply {
     ArithAddReply { c: args.a + args.b }

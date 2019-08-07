@@ -1,20 +1,20 @@
 [package]
-name = "rpcx_client"
+name = "rpcx"
 version = "0.1.1"
 authors = ["smallnest@gmail.com"]
 license = "MIT"
 readme = "README.md"
 description = "A rpc/microservice framework."
 repository = "https://github.com/smallnest/rpcx-rs"
-documentation = "https://docs.rs/rpcx-client/"
-homepage = "https://crates.io/crates/rpcx-client"
+documentation = "https://docs.rs/rpcx/"
+homepage = "https://crates.io/crates/rpcx"
 keywords = ["rpc", "network", "microservice"]
 categories = ["network-programming"]
+autobenches = true
 edition = "2018"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
-futures = "0.1.28"
 rpcx_protocol =  { version = "0.1.1", path = "../rpcx_protocol" }
 rpcx_derive =  { version = "0.1.1", path = "../rpcx_derive" }
+rpcx_client =  { version = "0.1.1", path = "../rpcx_client" }
+rpcx_server =  { version = "0.1.1", path = "../rpcx_server" }

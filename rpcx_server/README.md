@@ -6,6 +6,7 @@
 
 Rust library for [rpcx](https://rpcx.site) rpc/microservice framework.
 
+This library implements rpcx server side.
 
 see [rpcx-rs](https://github.com/smallnest/rpcx-rs)
 

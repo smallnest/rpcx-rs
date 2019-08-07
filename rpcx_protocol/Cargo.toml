@@ -1,6 +1,6 @@
 [package]
 name = "rpcx_protocol"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["smallnest@gmail.com"]
 license = "MIT"
 readme = "README.md"

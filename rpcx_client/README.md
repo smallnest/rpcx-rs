@@ -1,10 +1,10 @@
-# rpcx-rs
+# rpcx-client
 
 [![Build Status](https://travis-ci.org/smallnest/rpcx-rs.svg?branch=master)](https://travis-ci.org/smallnest/rpcx-rs)
 [![Crate](https://img.shields.io/crates/v/rpcx-client.svg)](https://crates.io/crates/rpcx-rs)
 [![API](https://docs.rs/rpcx-client/badge.svg)](https://docs.rs/rpcx-rs)
 
-Rust library for [rpcx](https://rpcx.site) rpc/microservice framework.
+Rust client library for [rpcx](https://rpcx.site) rpc/microservice framework.
 
 
 see [rpcx-rs](https://github.com/smallnest/rpcx-rs)

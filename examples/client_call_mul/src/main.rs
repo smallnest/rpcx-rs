@@ -1,8 +1,8 @@
 use std::collections::hash_map::HashMap;
 
 use mul_model::*;
-use rpcx_client::Client;
-use rpcx_protocol::{Result, SerializeType};
+use rpcx::Client;
+use rpcx::{Result, SerializeType};
 
 pub fn main() {
     let mut c: Client = Client::new("127.0.0.1:8972");

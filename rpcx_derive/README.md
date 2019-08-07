@@ -6,6 +6,7 @@
 
 Rust library for [rpcx](https://rpcx.site) rpc/microservice framework.
 
+This library has defined `RpcxParam` macro, which is used to implement `into_bytes` and `from_slice` methods for Arguments and Replies.
 
 see [rpcx-rs](https://github.com/smallnest/rpcx-rs)
 
