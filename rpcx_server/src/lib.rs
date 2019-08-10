@@ -3,26 +3,31 @@ use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
 use std::net::SocketAddr;
-use std::thread;
 
 use rpcx_protocol::*;
 use std::io::{BufReader, BufWriter, Write};
 use std::net::{Shutdown, TcpListener, TcpStream};
 
-use futures::lazy;
+use scoped_threadpool::Pool;
 
 pub type RpcxFn = fn(&[u8], SerializeType) -> Result<Vec<u8>>;
-
 pub struct Server {
     pub addr: String,
     pub services: Arc<RwLock<HashMap<String, Box<RpcxFn>>>>,
+    pub pool: Pool,
 }
 
 impl Server {
-    pub fn new(s: String) -> Self {
+    pub fn new(s: String, n: u32) -> Self {
+        let mut thread_number = n;
+        if n == 0 {
+            thread_number = num_cpus::get() as u32;
+            thread_number *= 2;
+        }
         Server {
             addr: s,
             services: Arc::new(RwLock::new(HashMap::new())),
+            pool: Pool::new(thread_number),
         }
     }
 
@@ -40,7 +45,7 @@ impl Server {
         Some(**box_fn)
     }
 
-    pub fn start(&self) -> Result<()> {
+    pub fn start(&mut self) -> Result<()> {
         let addr = self
             .addr
             .parse::<SocketAddr>()
@@ -52,7 +57,7 @@ impl Server {
         for stream in listener.incoming() {
             match stream {
                 Ok(stream) => {
-                    Server::process(&self.services, stream);
+                    self.process(stream);
                 }
                 Err(e) => {
                     println!("Unable to connect: {}", e);
@@ -63,12 +68,11 @@ impl Server {
         Ok(())
     }
 
-    fn process(services: &Arc<RwLock<HashMap<String, Box<RpcxFn>>>>, stream: TcpStream) {
-        let services_cloned = services.clone();
-
+    fn process(&mut self, stream: TcpStream) {
+        let services_cloned = self.services.clone();
         let local_stream = stream.try_clone().unwrap();
 
-        thread::spawn(move || {
+        self.pool.scoped(|scoped| {
             let mut reader = BufReader::new(stream.try_clone().unwrap());
             loop {
                 let mut msg = Message::new();
@@ -83,8 +87,8 @@ impl Server {
                                 let f = **box_fn;
                                 let local_stream_in_child = local_stream.try_clone().unwrap();
 
-                                thread::spawn(move || {
-                                    execute(local_stream_in_child.try_clone().unwrap(), msg, f)
+                                scoped.execute(move || {
+                                    invoke_fn(local_stream_in_child.try_clone().unwrap(), msg, f)
                                 });
                             }
                             None => {
@@ -111,7 +115,7 @@ impl Server {
     }
 }
 
-fn execute(stream: TcpStream, msg: Message, f: RpcxFn) {
+fn invoke_fn(stream: TcpStream, msg: Message, f: RpcxFn) {
     let mut reply_msg = msg.get_reply().unwrap();
     let reply = f(&msg.payload, msg.get_serialize_type().unwrap()).unwrap();
     reply_msg.payload = reply;

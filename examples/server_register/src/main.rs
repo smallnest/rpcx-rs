@@ -6,7 +6,7 @@ fn test(args: ArithAddArgs) -> ArithAddReply {
 }
 
 fn main() {
-    let mut rpc_server = Server::new("0.0.0.0:0".to_owned());
+    let mut rpc_server = Server::new("0.0.0.0:0".to_owned(),0);
     register_func!(
         rpc_server,
         "Arith",
