@@ -9,6 +9,8 @@ use rpcx_protocol::*;
 use std::io::{BufReader, BufWriter, Write};
 use std::net::{Shutdown, TcpListener, TcpStream};
 
+use futures::lazy;
+
 pub type RpcxFn = fn(&[u8], SerializeType) -> Result<Vec<u8>>;
 
 pub struct Server {
@@ -64,7 +66,7 @@ impl Server {
     fn process(services: &Arc<RwLock<HashMap<String, Box<RpcxFn>>>>, stream: TcpStream) {
         let services_cloned = services.clone();
 
-        let local_steam = stream.try_clone().unwrap();
+        let local_stream = stream.try_clone().unwrap();
 
         thread::spawn(move || {
             let mut reader = BufReader::new(stream.try_clone().unwrap());
@@ -79,23 +81,10 @@ impl Server {
                         match map.get(&key) {
                             Some(box_fn) => {
                                 let f = **box_fn;
-                                let mut reply_msg = msg.get_reply().unwrap();
-                                let mut payload = Vec::with_capacity(msg.payload.len());
-                                payload.extend_from_slice(&msg.payload);
+                                let local_stream_in_child = local_stream.try_clone().unwrap();
 
-                                let local_steam_in_child = local_steam.try_clone().unwrap();
                                 thread::spawn(move || {
-                                    let payload_data = payload;
-                                    let reply =
-                                        f(&payload_data, reply_msg.get_serialize_type().unwrap())
-                                            .unwrap();
-                                    reply_msg.payload = reply;
-                                    let data = reply_msg.encode();
-
-                                    let mut writer =
-                                        BufWriter::new(local_steam_in_child.try_clone().unwrap());
-                                    &writer.write_all(&data);
-                                    &writer.flush();
+                                    execute(local_stream_in_child.try_clone().unwrap(), msg, f)
                                 });
                             }
                             None => {
@@ -105,8 +94,7 @@ impl Server {
                                 (*metadata).insert(SERVICE_ERROR.to_string(), err);
                                 drop(metadata);
                                 let data = reply_msg.encode();
-                                println!("@@@@:{:?}", &reply_msg);
-                                let mut writer = BufWriter::new(local_steam.try_clone().unwrap());
+                                let mut writer = BufWriter::new(local_stream.try_clone().unwrap());
                                 writer.write_all(&data).unwrap();
                                 writer.flush().unwrap();
                             }
@@ -114,13 +102,24 @@ impl Server {
                     }
                     Err(error) => {
                         println!("failed to read: {}", error.to_string());
-                        local_steam.shutdown(Shutdown::Both).unwrap();
+                        local_stream.shutdown(Shutdown::Both).unwrap();
                         return;
                     }
                 }
             }
         });
     }
+}
+
+fn execute(stream: TcpStream, msg: Message, f: RpcxFn) {
+    let mut reply_msg = msg.get_reply().unwrap();
+    let reply = f(&msg.payload, msg.get_serialize_type().unwrap()).unwrap();
+    reply_msg.payload = reply;
+    let data = reply_msg.encode();
+
+    let mut writer = BufWriter::new(stream.try_clone().unwrap());
+    &writer.write_all(&data);
+    &writer.flush();
 }
 
 #[macro_export]
