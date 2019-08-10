@@ -106,7 +106,14 @@ impl Server {
                     }
                     Err(error) => {
                         println!("failed to read: {}", error.to_string());
-                        local_stream.shutdown(Shutdown::Both).unwrap();
+                        match local_stream.shutdown(Shutdown::Both) {
+                            Ok(()) => {
+                                println!("client {} is closed", local_stream.peer_addr().unwrap())
+                            }
+                            Err(_) => {
+                                println!("client {} is closed", local_stream.peer_addr().unwrap())
+                            }
+                        }
                         return;
                     }
                 }
