@@ -1,11 +1,14 @@
 use byteorder::{BigEndian, ByteOrder};
 use enum_primitive_derive::Primitive;
+use flate2::read::DeflateDecoder;
+use flate2::write::DeflateEncoder;
+use flate2::Compression;
 use num_traits::{FromPrimitive, ToPrimitive};
 use strum_macros::{Display, EnumIter, EnumString};
 
 use std::cell::RefCell;
 use std::collections::hash_map::HashMap;
-use std::io::Read;
+use std::io::{Read, Write};
 
 use crate::{Error, Result};
 
@@ -217,7 +220,15 @@ impl RpcxMessage for Message {
         }
 
         let mut vp = Vec::with_capacity(payload.len());
-        vp.extend_from_slice(&payload);
+        match self.get_compress_type().unwrap() {
+            CompressType::Gzip => {
+                let mut deflater = DeflateDecoder::new(payload);
+                deflater.read_to_end(&mut vp)?;
+            }
+            CompressType::CompressNone => {
+                vp.extend_from_slice(&payload);
+            }
+        }
         self.payload = vp;
 
         Ok(())
@@ -264,10 +275,26 @@ impl RpcxMessage for Message {
         buf.append(&mut metadata_bytes);
 
         // data
-        let len = self.payload.len();
-        let len_bytes = write_len(len as u32);
-        buf.extend_from_slice(&len_bytes);
-        buf.extend_from_slice(&self.payload);
+        // check compress
+
+        match self.get_compress_type().unwrap() {
+            CompressType::Gzip => {
+                let mut e = DeflateEncoder::new(Vec::new(), Compression::fast());
+                let _ = e.write_all(&self.payload[..]);
+                let compressed_payload = e.finish().unwrap();
+
+                let len = compressed_payload.len();
+                let len_bytes = write_len(len as u32);
+                buf.extend_from_slice(&len_bytes);
+                buf.extend_from_slice(&compressed_payload);
+            }
+            _ => {
+                let len = self.payload.len();
+                let len_bytes = write_len(len as u32);
+                buf.extend_from_slice(&len_bytes);
+                buf.extend_from_slice(&self.payload);
+            }
+        }
 
         // set the real length
         let len = buf.len() - 12 - 4;
