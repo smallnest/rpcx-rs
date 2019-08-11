@@ -8,9 +8,22 @@ use std::sync::Mutex;
 
 use crate::SerializeType;
 
+use bytes::BytesMut;
+
 pub trait RpcxParam: Debug {
     fn into_bytes(&self, st: SerializeType) -> Result<Vec<u8>>;
     fn from_slice(&mut self, st: SerializeType, data: &[u8]) -> Result<()>;
+}
+
+impl RpcxParam for BytesMut {
+    fn into_bytes(&self, _: SerializeType) -> Result<Vec<u8>> {
+        let rt = self.to_vec();
+        Ok(rt)
+    }
+    fn from_slice(&mut self, _: SerializeType, data: &[u8]) -> Result<()> {
+        (*self).extend_from_slice(data);
+        Ok(())
+    }
 }
 
 #[derive(Debug)]
