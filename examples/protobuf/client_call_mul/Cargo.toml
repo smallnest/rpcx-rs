@@ -1,0 +1,8 @@
+[package]
+name = "client_call_proto"
+version = "0.1.3"
+authors = ["smallnest <smallnest@gmail.com>"]
+edition = "2018"
+[dependencies]
+rpcx =  { version = "0.1.3", path = "../../../rpcx" }
+mul_model_proto =  { version = "0.1.3", path = "../mul_model_proto" }

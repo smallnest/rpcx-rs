@@ -12,6 +12,7 @@ members = [
     "examples/server_mul",
     "examples/protobuf/mul_model_proto",
     "examples/protobuf/server_mul",
+    "examples/protobuf/client_call_mul",
 ]
  
 [profile.release]
