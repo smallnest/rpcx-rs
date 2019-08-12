@@ -2,6 +2,7 @@ use std::collections::hash_map::HashMap;
 
 use mul_model::*;
 use rpcx::Client;
+use rpcx::RpcxClient;
 use rpcx::{Result, SerializeType,CompressType};
 
 pub fn main() {
