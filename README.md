@@ -40,7 +40,7 @@ Add this to your Cargo.toml:
 
 ```toml
 [dependencies]
-rpcx = "0.1.2"
+rpcx = "0.1.3"
 ```
 
 ## Example

@@ -1,6 +1,6 @@
 [package]
 name = "rpcx"
-version = "0.1.2"
+version = "0.1.3"
 authors = ["smallnest@gmail.com"]
 license = "MIT"
 readme = "README.md"
@@ -14,7 +14,7 @@ autobenches = true
 edition = "2018"
 
 [dependencies]
-rpcx_protocol =  { version = "0.1.2", path = "../rpcx_protocol" }
-rpcx_derive =  { version = "0.1.2", path = "../rpcx_derive" }
-rpcx_client =  { version = "0.1.2", path = "../rpcx_client" }
-rpcx_server =  { version = "0.1.2", path = "../rpcx_server" }
+rpcx_protocol =  { version = "0.1.3", path = "../rpcx_protocol" }
+rpcx_derive =  { version = "0.1.3", path = "../rpcx_derive" }
+rpcx_client =  { version = "0.1.3", path = "../rpcx_client" }
+rpcx_server =  { version = "0.1.3", path = "../rpcx_server" }
