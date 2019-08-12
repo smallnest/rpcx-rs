@@ -10,6 +10,8 @@ members = [
     "examples/client_call_mul_async",
     "examples/server_register",
     "examples/server_mul",
+    "examples/protobuf/mul_model_proto",
+    "examples/protobuf/server_mul",
 ]
  
 [profile.release]

@@ -12,7 +12,7 @@ fn main() {
         "Arith",
         "Add",
         test,
-        ArithAddArgs,
+        "ArithAddArgs",
         ArithAddReply
     );
 

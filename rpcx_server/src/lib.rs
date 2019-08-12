@@ -137,9 +137,10 @@ fn invoke_fn(stream: TcpStream, msg: Message, f: RpcxFn) {
 macro_rules! register_func {
     ($rpc_server:expr, $service_path:expr, $service_method:expr, $service_fn:expr, $arg_type:expr, $reply_type:expr) => {{
         let f: RpcxFn = |x, st| {
-            let mut args: ArithAddArgs = Default::default();
+            // TODO change ProtoArgs to $arg_type
+            let mut args: ProtoArgs = Default::default();
             args.from_slice(st, x)?;
-            let reply: ArithAddReply = $service_fn(args);
+            let reply = $service_fn(args);
             reply.into_bytes(st)
         };
         $rpc_server.register_fn($service_path.to_string(), $service_method.to_string(), f);

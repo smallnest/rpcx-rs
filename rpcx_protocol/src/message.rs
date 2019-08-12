@@ -37,7 +37,7 @@ pub enum CompressType {
 pub enum SerializeType {
     SerializeNone = 0,
     JSON = 1,
-    ProtoBuffer = 2,
+    Protobuf = 2,
     MsgPack = 3,
     Thrift = 4,
 }

@@ -1,0 +1,15 @@
+[package]
+name = "mul_model_proto"
+version = "0.1.2"
+authors = ["smallnest <smallnest@gmail.com>"]
+edition = "2018"
+
+[features] 
+default = []
+
+[dependencies]
+protobuf = "2.8.0"
+rpcx =  { version = "0.1.2", path = "../../../rpcx" }
+
+[build-dependencies]
+protoc-rust = "2.8.0"
