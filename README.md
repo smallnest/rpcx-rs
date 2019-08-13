@@ -139,18 +139,14 @@ pub fn main() {
         let service_method = String::from("Mul");
         let metadata = HashMap::new();
         let args = ArithAddArgs { a: a, b: 10 };
-        a = a + 1;
+        a += 1;
 
         let reply: Option<Result<ArithAddReply>> =
             c.call(service_path, service_method, false, metadata, &args);
-        if reply.is_none() {
-            continue;
-        }
-
-        let result_reply = reply.unwrap();
-        match result_reply {
-            Ok(r) => println!("received: {:?}", r),
-            Err(err) => println!("received err:{}", err),
+        match reply {
+            Some(Ok(r)) => println!("received: {:?}", r),
+            Some(Err(err)) => println!("received err:{}", err),
+            None => {}
         }
     }
 }
