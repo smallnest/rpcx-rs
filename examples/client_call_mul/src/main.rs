@@ -3,14 +3,13 @@ use std::collections::hash_map::HashMap;
 use mul_model::*;
 use rpcx::Client;
 use rpcx::RpcxClient;
-use rpcx::{Result, SerializeType,CompressType};
+use rpcx::{CompressType, Result, SerializeType};
 
 pub fn main() {
     let mut c: Client = Client::new("127.0.0.1:8972");
     c.start().map_err(|err| println!("{}", err)).unwrap();
     c.opt.serialize_type = SerializeType::JSON;
     c.opt.compress_type = CompressType::Gzip;
-
     let mut a = 1;
     loop {
         let service_path = String::from("Arith");

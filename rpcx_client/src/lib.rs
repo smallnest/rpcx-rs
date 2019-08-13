@@ -1,15 +1,17 @@
 pub mod client;
 pub mod xclient;
+pub mod selector;
 
 pub use client::*;
 pub use xclient::*;
+pub use selector::*;
 
 use futures::Future;
 use rpcx_protocol::{Error, Metadata, Result, RpcxParam};
 
 pub trait RpcxClient {
     fn call<T>(
-        &mut self,
+        &self,
         service_path: String,
         service_method: String,
         is_oneway: bool,
@@ -20,7 +22,7 @@ pub trait RpcxClient {
         T: RpcxParam + Default;
 
     fn acall<T>(
-        &mut self,
+        &self,
         service_path: String,
         service_method: String,
         metadata: Metadata,

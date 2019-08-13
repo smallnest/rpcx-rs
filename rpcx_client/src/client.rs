@@ -50,7 +50,7 @@ struct RpcData {
 #[derive(Debug)]
 pub struct Client {
     pub opt: Opt,
-    addr: &'static str,
+    addr: String,
     stream: Option<TcpStream>,
     seq: Arc<AtomicU64>,
     chan_sender: Sender<RpcData>,
@@ -59,12 +59,12 @@ pub struct Client {
 }
 
 impl Client {
-    pub fn new(addr: &'static str) -> Client {
+    pub fn new(addr: &str) -> Client {
         let (sender, receiver) = mpsc::channel();
 
         Client {
             opt: Default::default(),
-            addr: addr,
+            addr: String::from(addr),
             stream: None,
             seq: Arc::new(AtomicU64::new(0)),
             chan_sender: sender,
@@ -76,10 +76,10 @@ impl Client {
         let stream: TcpStream;
 
         if self.opt.connect_timeout.as_millis() == 0 {
-            stream = TcpStream::connect(self.addr)?;
+            stream = TcpStream::connect(self.addr.as_str())?;
         } else {
             let socket_addr: SocketAddr = self
-                .addr
+                .addr 
                 .parse()
                 .map_err(|err| Error::new(ErrorKind::Network, err))?;
             stream = TcpStream::connect_timeout(&socket_addr, self.opt.connect_timeout)?;
@@ -181,7 +181,7 @@ impl Client {
         Ok(())
     }
     pub fn send(
-        &mut self,
+        &self,
         service_path: String,
         service_method: String,
         is_oneway: bool,
@@ -230,7 +230,7 @@ impl Client {
         call_future
     }
 
-    fn remove_call_with_senderr(&mut self, err: SendError<RpcData>) {
+    fn remove_call_with_senderr(&self, err: SendError<RpcData>) {
         let seq = err.0.seq;
         let calls = self.calls.clone();
         let mut m = calls.lock().unwrap();
@@ -288,7 +288,7 @@ impl Client {
 
 impl RpcxClient for Client {
     fn call<T>(
-        &mut self,
+        &self,
         service_path: String,
         service_method: String,
         is_oneway: bool,
@@ -330,7 +330,7 @@ impl RpcxClient for Client {
     }
 
     fn acall<T>(
-        &mut self,
+        &self,
         service_path: String,
         service_method: String,
         metadata: Metadata,
