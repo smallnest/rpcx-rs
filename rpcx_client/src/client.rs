@@ -288,7 +288,7 @@ impl Client {
 
 impl RpcxClient for Client {
     fn call<T>(
-        &self,
+        &mut self,
         service_path: String,
         service_method: String,
         is_oneway: bool,
@@ -330,7 +330,7 @@ impl RpcxClient for Client {
     }
 
     fn acall<T>(
-        &self,
+        &mut self,
         service_path: String,
         service_method: String,
         metadata: Metadata,

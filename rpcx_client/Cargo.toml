@@ -17,5 +17,6 @@ edition = "2018"
 [dependencies]
 futures = "0.1.28"
 evmap = "6.0.0"
+rand = "0.7"
 rpcx_protocol =  { version = "0.1.3", path = "../rpcx_protocol" }
 rpcx_derive =  { version = "0.1.3", path = "../rpcx_derive" }

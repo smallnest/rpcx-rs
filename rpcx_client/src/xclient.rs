@@ -52,7 +52,7 @@ pub struct XClient<S: ClientSelector> {
 
 impl<S: ClientSelector> RpcxClient for XClient<S> {
     fn call<T>(
-        &self,
+        &mut self,
         service_path: String,
         service_method: String,
         is_oneway: bool,
@@ -63,33 +63,34 @@ impl<S: ClientSelector> RpcxClient for XClient<S> {
         T: RpcxParam + Default,
     {
         // get a key from selector
-        let k = self.selector.select(&service_path, &service_method, args);
+        let selector = &mut (self.selector);
+        let k = selector.select(&service_path, &service_method, args);
         if k.is_empty() {
             return Some(Err(Error::from("server not found".to_owned())));
         }
 
-        let clients_guard = self.clients.read().unwrap();
+        let mut clients_guard = self.clients.write().unwrap();
         let mut client = clients_guard.get(&k);
         if client.is_none() {
-            let mut clients_w_guard = self.clients.write().unwrap();
-            match clients_w_guard.get(&k) {
+            match clients_guard.get(&k) {
                 Some(_) => {}
                 None => {
                     let items: Vec<&str> = k.split("@").collect();
                     let mut created_client = Client::new(&items[1]);
                     created_client.start();
-                    clients_w_guard.insert(k.clone(), Box::new(created_client));
+                    clients_guard.insert(k.clone(), Box::new(created_client));
                 }
             }
         }
 
-        client = clients_guard.get(&k);
+        client = clients_guard.get(&k); 
         if client.is_none() {
             return Some(Err(Error::from("client still not found".to_owned())));
         }
 
         // invoke this client
-        let mut selected_client = client.unwrap();
+        let  boxed_selected_client = client.unwrap();
+        let mut selected_client = &mut *boxed_selected_client;
         let rt = selected_client.call::<T>(service_path, service_method, is_oneway, metadata, args);
 
         match &self.fail_mode {
@@ -102,7 +103,7 @@ impl<S: ClientSelector> RpcxClient for XClient<S> {
         None
     }
     fn acall<T>(
-        &self,
+        &mut self,
         service_path: String,
         service_method: String,
         metadata: Metadata,

@@ -11,7 +11,7 @@ use rpcx_protocol::{Error, Metadata, Result, RpcxParam};
 
 pub trait RpcxClient {
     fn call<T>(
-        &self,
+        &mut self,
         service_path: String,
         service_method: String,
         is_oneway: bool,
@@ -22,7 +22,7 @@ pub trait RpcxClient {
         T: RpcxParam + Default;
 
     fn acall<T>(
-        &self,
+        &mut self,
         service_path: String,
         service_method: String,
         metadata: Metadata,
