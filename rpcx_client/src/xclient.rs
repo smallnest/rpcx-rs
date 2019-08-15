@@ -149,7 +149,7 @@ impl<S: ClientSelector> RpcxClient for XClient<S> {
             match clients_w_guard.get(&k) {
                 Some(_) => {}
                 None => {
-                    let items: Vec<&str> = k.split("@").collect();
+                    let mut items: Vec<&str> = k.split("@").collect();
                     if items.len() == 1 {
                         items.insert(0, "tcp");
                     }
