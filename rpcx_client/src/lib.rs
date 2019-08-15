@@ -18,7 +18,7 @@ pub trait RpcxClient {
         metadata: Metadata,
         args: &dyn RpcxParam,
     ) -> Option<Result<T>>
-    where
+    where 
         T: RpcxParam + Default;
 
     fn acall<T>(
@@ -29,5 +29,5 @@ pub trait RpcxClient {
         args: &dyn RpcxParam,
     ) -> Box<dyn Future<Item = Result<T>, Error = Error> + Send + Sync>
     where
-        T: RpcxParam + Default;
+        T: RpcxParam + Default  + Sync+ Send + 'static;
 }

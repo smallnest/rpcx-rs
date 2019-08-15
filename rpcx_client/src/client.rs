@@ -290,7 +290,7 @@ impl RpcxClient for Client {
     fn call<T>(
         &mut self,
         service_path: String,
-        service_method: String,
+        service_method: String, 
         is_oneway: bool,
         metadata: Metadata,
         args: &dyn RpcxParam,

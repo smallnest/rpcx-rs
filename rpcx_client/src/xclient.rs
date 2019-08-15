@@ -2,11 +2,13 @@ use std::collections::HashMap;
 
 use super::selector::ClientSelector;
 
-use super::client::Client;
+use super::client::{Client, Opt};
 use super::RpcxClient;
 use futures::future;
 use futures::Future;
 use rpcx_protocol::{Error, Metadata, Result, RpcxParam};
+use std::boxed::Box;
+use std::cell::RefCell;
 use std::sync::Arc;
 use std::sync::RwLock;
 
@@ -44,10 +46,23 @@ pub enum SelectMode {
 }
 
 pub struct XClient<S: ClientSelector> {
+    pub opt: Opt,
     fail_mode: FailMode,
     selector_mode: SelectMode,
-    clients: Arc<RwLock<HashMap<String, Box<Client>>>>,
+    clients: Arc<RwLock<HashMap<String, RefCell<Client>>>>,
     selector: S,
+}
+
+impl<S: ClientSelector> XClient<S> {
+    pub fn new(fm: FailMode, sm: SelectMode, s: S, opt: Opt) -> Self {
+        XClient {
+            fail_mode: fm,
+            selector_mode: sm,
+            selector: s,
+            clients: Arc::new(RwLock::new(HashMap::new())),
+            opt: opt,
+        }
+    }
 }
 
 impl<S: ClientSelector> RpcxClient for XClient<S> {
@@ -70,28 +85,36 @@ impl<S: ClientSelector> RpcxClient for XClient<S> {
         }
 
         let mut clients_guard = self.clients.write().unwrap();
-        let mut client = clients_guard.get(&k);
+        let mut client = clients_guard.get_mut(&k);
         if client.is_none() {
             match clients_guard.get(&k) {
                 Some(_) => {}
                 None => {
-                    let items: Vec<&str> = k.split("@").collect();
+                    let mut items: Vec<&str> = k.split("@").collect();
+                    if items.len() == 1 {
+                        items.insert(0, "tcp");
+                    }
                     let mut created_client = Client::new(&items[1]);
-                    created_client.start();
-                    clients_guard.insert(k.clone(), Box::new(created_client));
+                    created_client.opt = self.opt;
+                    match created_client.start() {
+                        Ok(_) => {
+                            clients_guard.insert(k.clone(), RefCell::new(created_client));
+                        }
+                        Err(err) => return Some(Err(err)),
+                    }
                 }
             }
         }
 
-        client = clients_guard.get(&k); 
+        client = clients_guard.get_mut(&k);
         if client.is_none() {
             return Some(Err(Error::from("client still not found".to_owned())));
         }
 
         // invoke this client
-        let  boxed_selected_client = client.unwrap();
-        let mut selected_client = &mut *boxed_selected_client;
-        let rt = selected_client.call::<T>(service_path, service_method, is_oneway, metadata, args);
+        let mut selected_client = client.unwrap().borrow_mut();
+        let rt =
+            (*selected_client).call::<T>(service_path, service_method, is_oneway, metadata, args);
 
         match &self.fail_mode {
             Failover => {}
@@ -100,7 +123,7 @@ impl<S: ClientSelector> RpcxClient for XClient<S> {
             Failbackup => {}
         }
 
-        None
+        rt
     }
     fn acall<T>(
         &mut self,
@@ -110,12 +133,12 @@ impl<S: ClientSelector> RpcxClient for XClient<S> {
         args: &dyn RpcxParam,
     ) -> Box<dyn Future<Item = Result<T>, Error = Error> + Send + Sync>
     where
-        T: RpcxParam + Default,
+        T: RpcxParam + Default + Sync + Send + 'static,
     {
         // get a key from selector
         let k = self.selector.select(&service_path, &service_method, args);
         if k.is_empty() {
-            // return Some(Err(Error::from("server not found".to_owned())))
+            return Box::new(future::err(Error::from("server not found".to_owned())));
         }
 
         let clients_guard = self.clients.read().unwrap();
@@ -127,21 +150,38 @@ impl<S: ClientSelector> RpcxClient for XClient<S> {
                 Some(_) => {}
                 None => {
                     let items: Vec<&str> = k.split("@").collect();
+                    if items.len() == 1 {
+                        items.insert(0, "tcp");
+                    }
                     let mut created_client = Client::new(&items[1]);
-                    created_client.start();
-                    clients_w_guard.insert(k.clone(), Box::new(created_client));
+                    match created_client.start() {
+                        Ok(_) => {
+                            clients_w_guard.insert(k.clone(), RefCell::new(created_client));
+                        }
+                        Err(err) => return Box::new(future::err(err)),
+                    }
                 }
             }
         }
 
         client = clients_guard.get(&k);
         if client.is_none() {
-            // return Some(Err(Error::from("client still not found".to_owned())))
+            return Box::new(future::err(Error::from(
+                "client still not found".to_owned(),
+            )));
         }
 
         // invoke this client
-        let mut selected_client = client.unwrap();
+        let mut selected_client = client.unwrap().borrow_mut();
+        let rt = (*selected_client).acall::<T>(service_path, service_method, metadata, args);
 
-        selected_client.acall(service_path, service_method, metadata, args)
+        match &self.fail_mode {
+            Failover => {}
+            Failfast => {}
+            Failtry => {}
+            Failbackup => {}
+        }
+
+        rt
     }
 }
