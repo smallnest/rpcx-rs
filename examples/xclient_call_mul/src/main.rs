@@ -13,7 +13,7 @@ pub fn main() {
     let mut opt: Opt = Default::default();
     opt.serialize_type = SerializeType::JSON;
     opt.compress_type = CompressType::Gzip;
-    let mut xc = XClient::new(FailMode::Failfast, SelectMode::RandomSelect, selector, opt);
+    let mut xc = XClient::new(FailMode::Failfast, selector, opt);
 
     let mut a = 1;
     loop {
