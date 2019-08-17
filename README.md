@@ -14,24 +14,40 @@ If you can write Rust functions, you can write rpc services. It is so easy.
 
 ###  0.1.x
 
-protocol and client lib.
+protocol and client/server lib.
 
 - [x] Protocol
 - [x] Client (call synchronous/asynchronous)
-- [x] support JSON and MessagePack
+- [x] support JSON, MessagePack and Protobuf
+- [x] Service implementation
 
 ### 0.2.x
 
-server lib. You can register services bu Rust and  they can be invoked by other languages.
+- [ ] Service discovery
+  - [ ] static multiple peers 
+  - [ ] etcd
+  - [ ] consul
+- [ ] service governance
+ - [ ] Select Mode
+   - [x] RandomSelect,
+   - [ ] RoundRobin
+   - [ ] WeightedRoundRobin
+   - [ ] WeightedICMP
+   - [ ] ConsistentHash
+   - [ ] Closest
+   - [ ] Custiomized
+ - [ ] Faile Mode
+   - [ ] Failover
+   - [x] Failfast
+   - [x] Failtry
+   - [ ] Failbackup
 
-- [ ] Service implementation
-- [ ] document
-- [ ] unit tests and integration tests
 
 ### 0.3.x
 
-- [ ] Service discovery and service governance: support etcd and consul
 - [ ] Plugins
+- [ ] document
+- [ ] unit tests and integration tests
 - [ ] Other features like implementation in Go
 
 ## Usage

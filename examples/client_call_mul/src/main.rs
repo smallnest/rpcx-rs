@@ -19,7 +19,7 @@ pub fn main() {
         a = a + 1;
 
         let reply: Option<Result<ArithAddReply>> =
-            c.call(service_path, service_method, false, metadata, &args);
+            c.call(&service_path, &service_method, false, &metadata, &args);
         if reply.is_none() {
             continue;
         }

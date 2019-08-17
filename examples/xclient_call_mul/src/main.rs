@@ -24,7 +24,7 @@ pub fn main() {
         a = a + 1;
 
         let reply: Option<Result<ArithAddReply>> =
-            xc.call(service_path, service_method, false, metadata, &args);
+            xc.call(&service_path, &service_method, false, &metadata, &args);
         if reply.is_none() {
             continue;
         }

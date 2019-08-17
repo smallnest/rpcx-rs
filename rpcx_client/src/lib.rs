@@ -12,10 +12,10 @@ use rpcx_protocol::{Error, Metadata, Result, RpcxParam};
 pub trait RpcxClient {
     fn call<T>(
         &mut self,
-        service_path: String,
-        service_method: String,
+        service_path: &String,
+        service_method: &String,
         is_oneway: bool,
-        metadata: Metadata,
+        metadata: &Metadata,
         args: &dyn RpcxParam,
     ) -> Option<Result<T>>
     where 
@@ -23,9 +23,9 @@ pub trait RpcxClient {
 
     fn acall<T>(
         &mut self,
-        service_path: String,
-        service_method: String,
-        metadata: Metadata,
+        service_path: &String,
+        service_method: &String,
+        metadata: &Metadata,
         args: &dyn RpcxParam,
     ) -> Box<dyn Future<Item = Result<T>, Error = Error> + Send + Sync>
     where

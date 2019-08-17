@@ -1,3 +1,5 @@
+#![allow(non_snake_case)]
+
 use std::collections::HashMap;
 
 use super::selector::ClientSelector;
@@ -10,38 +12,41 @@ use rpcx_protocol::{Error, Metadata, Result, RpcxParam};
 use std::boxed::Box;
 use std::cell::RefCell;
 use std::sync::{Arc, RwLock, RwLockWriteGuard};
+use strum_macros::{Display, EnumIter, EnumString};
 
 pub trait ServiceDiscovery {
     fn get_services() -> [(String, String)];
     fn close();
 }
 
+#[derive(Debug, Copy, Clone, Display, PartialEq, EnumIter, EnumString)]
 pub enum FailMode {
     //Failover selects another server automaticaly
-    Failover,
+    Failover = 0,
     //Failfast returns error immediately
-    Failfast,
+    Failfast = 1,
     //Failtry use current client again
-    Failtry,
+    Failtry = 2,
     //Failbackup select another server if the first server doesn't respon in specified time and use the fast response.
-    Failbackup,
+    Failbackup = 3,
 }
 
+#[derive(Debug, Copy, Clone, Display, PartialEq, EnumIter, EnumString)]
 pub enum SelectMode {
     //RandomSelect is selecting randomly
-    RandomSelect,
+    RandomSelect = 0,
     //RoundRobin is selecting by round robin
-    RoundRobin,
+    RoundRobin = 1,
     //WeightedRoundRobin is selecting by weighted round robin
-    WeightedRoundRobin,
+    WeightedRoundRobin = 2,
     //WeightedICMP is selecting by weighted Ping time
-    WeightedICMP,
+    WeightedICMP = 3,
     //ConsistentHash is selecting by hashing
-    ConsistentHash,
+    ConsistentHash = 4,
     //Closest is selecting the closest server
-    Closest,
+    Closest = 5,
     // SelectByUser is selecting by implementation of users
-    SelectByUser,
+    SelectByUser = 1000,
 }
 
 pub struct XClient<S: ClientSelector> {
@@ -88,7 +93,7 @@ impl<S: ClientSelector> XClient<S> {
             }
         }
 
-        let mut client = clients_guard.get_mut(&k);
+        let client = clients_guard.get_mut(&k);
         match client {
             Some(_) => Ok(client.unwrap()),
             None => Err(Error::from("client still not found".to_owned())),
@@ -99,10 +104,10 @@ impl<S: ClientSelector> XClient<S> {
 impl<S: ClientSelector> RpcxClient for XClient<S> {
     fn call<T>(
         &mut self,
-        service_path: String,
-        service_method: String,
+        service_path: &String,
+        service_method: &String,
         is_oneway: bool,
-        metadata: Metadata,
+        metadata: &Metadata,
         args: &dyn RpcxParam,
     ) -> Option<Result<T>>
     where
@@ -120,26 +125,49 @@ impl<S: ClientSelector> RpcxClient for XClient<S> {
         if client.is_err() {
             return Some(Err(client.unwrap_err()));
         }
-
         // invoke this client
         let mut selected_client = client.unwrap().borrow_mut();
-        let rt =
+        let opt_rt =
             (*selected_client).call::<T>(service_path, service_method, is_oneway, metadata, args);
 
-        match &self.fail_mode {
-            Failover => {}
-            Failfast => {}
-            Failtry => {}
-            Failbackup => {}
+        if is_oneway {
+            return opt_rt;
         }
 
-        rt
+        let rt = opt_rt.unwrap();
+
+        if rt.is_err() {
+            match self.fail_mode {
+                FailMode::Failover => {}
+                FailMode::Failfast => return Some(rt),
+                FailMode::Failtry => {
+                    let mut retry = self.opt.retry;
+                    while retry > 0 {
+                        retry -= 1;
+                        let opt_rt = (*selected_client).call::<T>(
+                            service_path,
+                            service_method,
+                            is_oneway,
+                            metadata,
+                            args,
+                        );
+                        let rt = opt_rt.unwrap();
+                        if rt.is_ok() {
+                            return Some(rt);
+                        }
+                    }
+                }
+                FailMode::Failbackup => {}
+            }
+        }
+
+        Some(rt)
     }
     fn acall<T>(
         &mut self,
-        service_path: String,
-        service_method: String,
-        metadata: Metadata,
+        service_path: &String,
+        service_method: &String,
+        metadata: &Metadata,
         args: &dyn RpcxParam,
     ) -> Box<dyn Future<Item = Result<T>, Error = Error> + Send + Sync>
     where
@@ -161,14 +189,6 @@ impl<S: ClientSelector> RpcxClient for XClient<S> {
         // invoke this client
         let mut selected_client = client.unwrap().borrow_mut();
         let rt = (*selected_client).acall::<T>(service_path, service_method, metadata, args);
-
-        match &self.fail_mode {
-            Failover => {}
-            Failfast => {}
-            Failtry => {}
-            Failbackup => {}
-        }
-
         rt
     }
 }

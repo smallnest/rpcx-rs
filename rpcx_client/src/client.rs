@@ -17,6 +17,7 @@ use rpcx_protocol::*;
 
 #[derive(Debug, Copy, Clone)]
 pub struct Opt {
+    pub retry: u8,
     pub compress_type: CompressType,
     pub serialize_type: SerializeType,
     pub connect_timeout: Duration,
@@ -29,6 +30,7 @@ pub struct Opt {
 impl Default for Opt {
     fn default() -> Self {
         Opt {
+            retry: 3,
             compress_type: CompressType::CompressNone,
             serialize_type: SerializeType::JSON,
             connect_timeout: Default::default(),
@@ -79,7 +81,7 @@ impl Client {
             stream = TcpStream::connect(self.addr.as_str())?;
         } else {
             let socket_addr: SocketAddr = self
-                .addr 
+                .addr
                 .parse()
                 .map_err(|err| Error::new(ErrorKind::Network, err))?;
             stream = TcpStream::connect_timeout(&socket_addr, self.opt.connect_timeout)?;
@@ -182,11 +184,11 @@ impl Client {
     }
     pub fn send(
         &self,
-        service_path: String,
-        service_method: String,
+        service_path: &String,
+        service_method: &String,
         is_oneway: bool,
         is_heartbeat: bool,
-        metadata: Metadata,
+        metadata: &Metadata,
         args: &dyn RpcxParam,
     ) -> CallFuture {
         let seq = self.seq.clone().fetch_add(1, Ordering::SeqCst);
@@ -199,7 +201,12 @@ impl Client {
         req.set_seq(seq);
         req.service_path = service_path.clone();
         req.service_method = service_method.clone();
-        req.metadata.replace(metadata);
+
+        let mut new_metadata = HashMap::with_capacity(metadata.len());
+        for (k, v) in metadata {
+            new_metadata.insert(k.clone(), v.clone());
+        }
+        req.metadata.replace(new_metadata);
         let payload = args.into_bytes(self.opt.serialize_type).unwrap();
         req.payload = payload;
 
@@ -289,10 +296,10 @@ impl Client {
 impl RpcxClient for Client {
     fn call<T>(
         &mut self,
-        service_path: String,
-        service_method: String, 
+        service_path: &String,
+        service_method: &String,
         is_oneway: bool,
-        metadata: Metadata,
+        metadata: &Metadata,
         args: &dyn RpcxParam,
     ) -> Option<Result<T>>
     where
@@ -331,9 +338,9 @@ impl RpcxClient for Client {
 
     fn acall<T>(
         &mut self,
-        service_path: String,
-        service_method: String,
-        metadata: Metadata,
+        service_path: &String,
+        service_method: &String,
+        metadata: &Metadata,
         args: &dyn RpcxParam,
     ) -> Box<dyn Future<Item = Result<T>, Error = Error> + Send + Sync>
     where

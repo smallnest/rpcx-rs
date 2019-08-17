@@ -19,7 +19,7 @@ pub fn main() {
         a = a + 1;
 
         let reply: Result<Result<ArithAddReply>> = c
-            .acall(service_path, service_method, metadata, &args)
+            .acall(&service_path, &service_method, &metadata, &args)
             .wait();
         let result_reply = reply.unwrap();
         match result_reply {
