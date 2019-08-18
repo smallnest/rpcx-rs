@@ -33,10 +33,10 @@ protocol and client/server lib.
 - [ ] service governance
  - [ ] Select Mode
    - [x] RandomSelect,
-   - [ ] RoundRobin
+   - [x] RoundRobin
    - [ ] WeightedRoundRobin
    - [ ] WeightedICMP
-   - [ ] ConsistentHash
+   - [x] ConsistentHash
    - [ ] Closest
    - [ ] Custiomized
  - [ ] Faile Mode

@@ -4,16 +4,7 @@ members = [
     "rpcx_protocol",
     "rpcx_derive",
     "rpcx_client",
-    "rpcx_server",
-    "examples/mul_model",
-    "examples/client_call_mul",
-    "examples/client_call_mul_async",
-    "examples/server_register",
-    "examples/server_mul",
-    "examples/protobuf/mul_model_proto",
-    "examples/protobuf/server_mul",
-    "examples/protobuf/client_call_mul",
-    "examples/xclient_call_mul"
+    "rpcx_server"
 ]
  
 [profile.release]
