@@ -40,7 +40,7 @@ protocol and client/server lib.
    - [ ] Closest
    - [ ] Custiomized
  - [ ] Faile Mode
-   - [ ] Failover
+   - [x] Failover
    - [x] Failfast
    - [x] Failtry
    - [ ] Failbackup

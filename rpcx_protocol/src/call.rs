@@ -35,6 +35,7 @@ pub struct Status {
 #[derive(Debug)]
 pub struct Call {
     pub seq: u64,
+    pub is_client_error: bool,
     pub state: Arc<Mutex<Status>>,
     pub error: String,
     pub reply_data: Vec<u8>,
@@ -44,6 +45,7 @@ impl Call {
     pub fn new(seq: u64) -> Self {
         Call {
             seq: seq,
+            is_client_error: true,
             state: Arc::new(Mutex::new(Status {
                 ready: false,
                 task: None,

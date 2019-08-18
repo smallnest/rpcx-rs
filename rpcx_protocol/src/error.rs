@@ -32,6 +32,7 @@ struct Custom {
 pub enum ErrorKind {
     Protocol,
     IO,
+    Client,
     Network,
     Server,
     Serialization,
@@ -43,6 +44,7 @@ impl ErrorKind {
         match *self {
             ErrorKind::Protocol => "invalid protocol",
             ErrorKind::IO => "io issue",
+            ErrorKind::Client => "client error",
             ErrorKind::Network => "network issue",
             ErrorKind::Server => "server error",
             ErrorKind::Serialization => "serialization failure",
@@ -83,10 +85,10 @@ impl From<std::io::Error> for Error {
     }
 }
 
-impl From<Box<dyn std::error::Error+ Send + Sync>> for Error {
+impl From<Box<dyn std::error::Error + Send + Sync>> for Error {
     #[inline]
-    fn from(err: Box<dyn std::error::Error+ Send + Sync>) -> Error {
-        Error::_new(ErrorKind::Other, err) 
+    fn from(err: Box<dyn std::error::Error + Send + Sync>) -> Error {
+        Error::_new(ErrorKind::Other, err)
     }
 }
 impl From<ErrorKind> for Error {

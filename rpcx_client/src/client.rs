@@ -116,6 +116,7 @@ impl Client {
                             let internal_call_cloned = call.clone();
                             let mut internal_call_mutex = internal_call_cloned.lock().unwrap();
                             let internal_call = internal_call_mutex.get_mut();
+                            internal_call.is_client_error = false;
                             if let Some(MessageStatusType::Error) = msg.get_message_status_type() {
                                 internal_call.error = msg.get_error().unwrap_or("".to_owned());
                             } else {
@@ -326,7 +327,11 @@ impl RpcxClient for Client {
 
         if arc_call_3.error.len() > 0 {
             let err = &arc_call_3.error;
-            return Some(Err(Error::from(String::from(err))));
+            if arc_call_3.is_client_error {
+                return Some(Err(Error::new(ErrorKind::Client,String::from(err))));
+            } else {
+                return Some(Err(Error::from(String::from(err))));
+            }
         }
 
         let mut reply: T = Default::default();

@@ -8,7 +8,7 @@ use super::client::{Client, Opt};
 use super::RpcxClient;
 use futures::future;
 use futures::Future;
-use rpcx_protocol::{Error, Metadata, Result, RpcxParam};
+use rpcx_protocol::{Error, ErrorKind, Metadata, Result, RpcxParam};
 use std::boxed::Box;
 use std::cell::RefCell;
 use std::sync::{Arc, RwLock, RwLockWriteGuard};
@@ -117,13 +117,16 @@ impl<S: ClientSelector> RpcxClient for XClient<S> {
         let selector = &mut (self.selector);
         let k = selector.select(&service_path, &service_method, args);
         if k.is_empty() {
-            return Some(Err(Error::from("server not found".to_owned())));
+            return Some(Err(Error::new(
+                ErrorKind::Client,
+                "server not found".to_owned(),
+            )));
         }
 
         let mut clients_guard = self.clients.write().unwrap();
         let client = self.get_cached_client(&mut clients_guard, k.clone());
         if client.is_err() {
-            return Some(Err(client.unwrap_err()));
+            return Some(Err(Error::new(ErrorKind::Client, client.unwrap_err())));
         }
         // invoke this client
         let mut selected_client = client.unwrap().borrow_mut();
@@ -136,32 +139,68 @@ impl<S: ClientSelector> RpcxClient for XClient<S> {
 
         let rt = opt_rt.unwrap();
 
-        if rt.is_err() {
-            match self.fail_mode {
-                FailMode::Failover => {}
-                FailMode::Failfast => return Some(rt),
-                FailMode::Failtry => {
-                    let mut retry = self.opt.retry;
-                    while retry > 0 {
-                        retry -= 1;
-                        let opt_rt = (*selected_client).call::<T>(
-                            service_path,
-                            service_method,
-                            is_oneway,
-                            metadata,
-                            args,
-                        );
-                        let rt = opt_rt.unwrap();
-                        if rt.is_ok() {
-                            return Some(rt);
+        match rt {
+            Err(rt_err) => {
+                if rt_err.kind() == ErrorKind::Client {
+                    match self.fail_mode {
+                        FailMode::Failover => {
+                            let mut retry = self.opt.retry;
+                            while retry > 0 {
+                                retry -= 1;
+
+                                // re-select
+                                let mut clients_guard = self.clients.write().unwrap();
+                                let client = self.get_cached_client(&mut clients_guard, k.clone());
+                                if client.is_err() {
+                                    return Some(Err(client.unwrap_err()));
+                                }
+                                let mut selected_client = client.unwrap().borrow_mut();
+
+                                let opt_rt = (*selected_client).call::<T>(
+                                    service_path,
+                                    service_method,
+                                    is_oneway,
+                                    metadata,
+                                    args,
+                                );
+                                let rt = opt_rt.unwrap();
+                                if rt.is_ok() {
+                                    return Some(rt);
+                                }
+                                if rt.unwrap_err().kind() == ErrorKind::Client {
+                                    continue;
+                                }
+                            }
                         }
+                        FailMode::Failfast => return Some(Err(rt_err)),
+                        FailMode::Failtry => {
+                            let mut retry = self.opt.retry;
+                            while retry > 0 {
+                                retry -= 1;
+                                let opt_rt = (*selected_client).call::<T>(
+                                    service_path,
+                                    service_method,
+                                    is_oneway,
+                                    metadata,
+                                    args,
+                                );
+                                let rt = opt_rt.unwrap();
+                                if rt.is_ok() {
+                                    return Some(rt);
+                                }
+                                if rt.unwrap_err().kind() == ErrorKind::Client {
+                                    continue;
+                                }
+                            }
+                        }
+                        FailMode::Failbackup => {}
                     }
                 }
-                FailMode::Failbackup => {}
-            }
-        }
 
-        Some(rt)
+                return Some(Err(rt_err));
+            }
+            Ok(r) => Some(Ok(r)),
+        }
     }
     fn acall<T>(
         &mut self,

@@ -3,7 +3,6 @@ use rand::Rng;
 use rpcx_protocol::{RpcxParam, SerializeType};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
-use std::hash::Hasher;
 
 pub trait ClientSelector {
     fn select(
@@ -73,7 +72,7 @@ impl ClientSelector for RoundbinSelector {
     ) -> String {
         let servers = (*self).servers.read().unwrap();
         let size = servers.len();
-        self.index = (self.index +1) % size;
+        self.index = (self.index + 1) % size;
         let s = &servers[self.index];
         String::from(s)
     }
@@ -84,7 +83,6 @@ impl ClientSelector for RoundbinSelector {
         }
     }
 }
-
 
 pub struct ConsistentHashSelector {
     pub servers: Arc<RwLock<Vec<String>>>,
@@ -97,8 +95,13 @@ impl ConsistentHashSelector {
         }
     }
 }
- 
-fn hash_request(data: &mut Vec<u8>,  service_path: &String,service_method: &String,args: &dyn RpcxParam) {
+
+fn hash_request(
+    data: &mut Vec<u8>,
+    service_path: &String,
+    service_method: &String,
+    args: &dyn RpcxParam,
+) {
     data.extend(service_path.clone().into_bytes());
     data.extend(service_method.clone().into_bytes());
     data.extend(args.into_bytes(SerializeType::JSON).unwrap());
@@ -114,10 +117,9 @@ impl ClientSelector for ConsistentHashSelector {
         let size = servers.len();
 
         // let data = Vec::new(service_path.len() + service_method.len());
-        
         let jh = jumphash::JumpHasher::new();
         let mut data = Vec::new();
-        hash_request(&mut data,service_path,service_method,args);
+        hash_request(&mut data, service_path, service_method, args);
         let index = jh.slot(&data, size as u32);
         let s = &servers[index as usize];
         String::from(s)
