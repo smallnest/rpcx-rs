@@ -22,4 +22,3 @@ serde_json = "1.0.40"
 rmp-serde = "0.13.7"
 rpcx_protocol =  { version = "0.2.0", path = "../rpcx_protocol" }
 rpcx_derive =  { version = "0.2.0", path = "../rpcx_derive" }
-rpcx_client =  { version = "0.2.0", path = "../rpcx_client" }
