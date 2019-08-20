@@ -14,11 +14,6 @@ use std::cell::RefCell;
 use std::sync::{Arc, RwLock, RwLockWriteGuard};
 use strum_macros::{Display, EnumIter, EnumString};
 
-pub trait ServiceDiscovery {
-    fn get_services() -> [(String, String)];
-    fn close();
-}
-
 #[derive(Debug, Copy, Clone, Display, PartialEq, EnumIter, EnumString)]
 pub enum FailMode {
     //Failover selects another server automaticaly
@@ -53,11 +48,11 @@ pub struct XClient<S: ClientSelector> {
     pub opt: Opt,
     fail_mode: FailMode,
     clients: Arc<RwLock<HashMap<String, RefCell<Client>>>>,
-    selector: S,
+    selector: Box<S>,
 }
 
 impl<S: ClientSelector> XClient<S> {
-    pub fn new(fm: FailMode, s: S, opt: Opt) -> Self {
+    pub fn new(fm: FailMode, s: Box<S>, opt: Opt) -> Self {
         XClient {
             fail_mode: fm,
             selector: s,

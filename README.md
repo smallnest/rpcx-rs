@@ -27,7 +27,7 @@ protocol and client/server lib.
 ### 0.2.x
 
 - [ ] Service discovery
-  - [ ] static multiple peers 
+  - [x] static multiple peers 
   - [ ] etcd
   - [ ] consul
 - [ ] service governance
@@ -48,10 +48,10 @@ protocol and client/server lib.
 
 ### 0.3.x
 
-- [ ] Plugins
+- [ ] plugins
 - [ ] document
 - [ ] unit tests and integration tests
-- [ ] Other features like implementation in Go
+- [ ] other features like implementation in Go
 
 ## Usage
 

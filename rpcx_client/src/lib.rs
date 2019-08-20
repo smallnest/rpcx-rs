@@ -1,10 +1,12 @@
 pub mod client;
 pub mod xclient;
 pub mod selector;
+pub mod discovery;
 
 pub use client::*;
 pub use xclient::*;
 pub use selector::*;
+pub use discovery::*;
 
 use futures::Future;
 use rpcx_protocol::{Error, Metadata, Result, RpcxParam};

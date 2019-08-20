@@ -11,7 +11,7 @@ pub trait ClientSelector {
         service_method: &String,
         args: &dyn RpcxParam,
     ) -> String;
-    fn update_server(&self, servers: HashMap<String, String>);
+    fn update_server(&self, servers: &HashMap<String, String>);
 }
 
 pub struct RandomSelector {
@@ -41,7 +41,7 @@ impl ClientSelector for RandomSelector {
         let s = &servers[idx];
         String::from(s)
     }
-    fn update_server(&self, map: HashMap<String, String>) {
+    fn update_server(&self, map: &HashMap<String, String>) {
         let mut servers = (*self).servers.write().unwrap();
         for k in map.keys() {
             servers.push(String::from(k));
@@ -76,7 +76,7 @@ impl ClientSelector for RoundbinSelector {
         let s = &servers[self.index];
         String::from(s)
     }
-    fn update_server(&self, map: HashMap<String, String>) {
+    fn update_server(&self, map: &HashMap<String, String>) {
         let mut servers = (*self).servers.write().unwrap();
         for k in map.keys() {
             servers.push(String::from(k));
@@ -124,7 +124,7 @@ impl ClientSelector for ConsistentHashSelector {
         let s = &servers[index as usize];
         String::from(s)
     }
-    fn update_server(&self, map: HashMap<String, String>) {
+    fn update_server(&self, map: &HashMap<String, String>) {
         let mut servers = (*self).servers.write().unwrap();
         for k in map.keys() {
             servers.push(String::from(k));

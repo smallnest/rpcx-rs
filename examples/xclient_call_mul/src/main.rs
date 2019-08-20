@@ -2,18 +2,20 @@ use std::collections::hash_map::HashMap;
 
 use mul_model::*;
 use rpcx::*;
-use rpcx::{CompressType, Result, SerializeType};
 
 pub fn main() {
     let mut servers = HashMap::new();
     servers.insert("tcp@127.0.0.1:8972".to_owned(), "".to_owned());
     let selector = RandomSelector::new();
-    selector.update_server(servers);
+
+    let disc = StaticDiscovery::new();
+    disc.add_selector(&selector);
+    disc.update_servers(&servers);
 
     let mut opt: Opt = Default::default();
     opt.serialize_type = SerializeType::JSON;
     opt.compress_type = CompressType::Gzip;
-    let mut xc = XClient::new(FailMode::Failfast, selector, opt);
+    let mut xc = XClient::new(FailMode::Failfast, Box::new(selector), opt);
 
     let mut a = 1;
     loop {
