@@ -386,9 +386,9 @@ impl ::protobuf::reflect::ProtobufValue for ProtoReply {
 }
 
 static file_descriptor_proto_data: &'static [u8] = b"\
-    \n\x0barith.proto\x12\x06client\"'\n\tProtoArgs\x12\x0c\n\x01A\x18\x01\
-    \x20\x01(\x05R\x01A\x12\x0c\n\x01B\x18\x02\x20\x01(\x05R\x01B\"\x1a\n\nP\
-    rotoReply\x12\x0c\n\x01C\x18\x01\x20\x01(\x05R\x01Cb\x06proto3\
+    \n\x0barith.proto\x12\x06client\"'\n\tProtoArgs\x12\x0b\n\x01A\x18\x01\
+    \x20\x01(\x05B\0\x12\x0b\n\x01B\x18\x02\x20\x01(\x05B\0:\0\"\x1b\n\nProt\
+    oReply\x12\x0b\n\x01C\x18\x01\x20\x01(\x05B\0:\0B\0b\x06proto3\
 ";
 
 static mut file_descriptor_proto_lazy: ::protobuf::lazy::Lazy<::protobuf::descriptor::FileDescriptorProto> = ::protobuf::lazy::Lazy {

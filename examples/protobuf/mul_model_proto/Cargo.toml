@@ -13,3 +13,4 @@ rpcx =  { version = "0.2.0", path = "../../../rpcx" }
 
 [build-dependencies]
 protoc-rust = "2.8.0"
+protobuf-codegen-pure = "2.3"
