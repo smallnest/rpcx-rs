@@ -11,7 +11,7 @@ Use the **simplest** style to explore Rust function as cross-platform rpc servic
 If you can write Rust functions, you can write rpc services. It is so easy.
 
 
-see all exampes: [rpcx-rs-examples](https://github.com/smallnest/rpcx-rs-examples).
+see all exampes: [rpcx-rs-examples](https://github.com/smallnest/rpcx-rs/examples).
 
 ## Roadmap
 
@@ -176,7 +176,7 @@ Actually you can use this client to access rpcx services implemented by other pr
 
 As you see, only after three steps you have expored Rust functions (`add` and `mul`) as rpc services.
 
-You can find more examples at [rpcx-rs/examples](https://github.com/smallnest/rpcx-rs/tree/master/examples)
+You can find more examples at [rpcx-rs/examples](https://github.com/smallnest/rpcx-rs/examples)
 
 ## License
 
