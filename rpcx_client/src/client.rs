@@ -318,7 +318,7 @@ impl RpcxClient for Client {
         let arc_call_3 = arc_call_2.get_mut();
         let reply_data = &arc_call_3.reply_data;
 
-        if arc_call_3.error.is_empty() {
+        if !arc_call_3.error.is_empty() {
             let err = &arc_call_3.error;
             if arc_call_3.is_client_error {
                 return Some(Err(Error::new(ErrorKind::Client, String::from(err))));
@@ -353,7 +353,6 @@ impl RpcxClient for Client {
                 let mut arc_call_2 = arc_call_1.lock().unwrap();
                 let arc_call_3 = arc_call_2.get_mut();
                 let reply_data = &arc_call_3.reply_data;
-
                 if !arc_call_3.error.is_empty() {
                     let err = &arc_call_3.error;
                     return Err(Error::from(String::from(err)));
