@@ -1,9 +1,7 @@
 use std::collections::hash_map::HashMap;
 
 use mul_model_proto::*;
-use rpcx::Client;
-use rpcx::RpcxClient;
-use rpcx::{Result, SerializeType,CompressType};
+use rpcx::{Client, CompressType, Result, RpcxClient, SerializeType};
 
 pub fn main() {
     let mut c: Client = Client::new("127.0.0.1:8972");
@@ -17,9 +15,9 @@ pub fn main() {
         let service_method = String::from("Mul");
         let metadata = HashMap::new();
         let mut args = ProtoArgs::new();
-        &args.set_A(a);
-        &args.set_B(20);
-        a = a + 1;
+        args.set_A(a);
+        args.set_B(20);
+        a += 1;
 
         let reply: Option<Result<ProtoReply>> =
             c.call(&service_path, &service_method, false, &metadata, &args);

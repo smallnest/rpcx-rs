@@ -1,8 +1,4 @@
-use std::convert::From;
-use std::error;
-use std::fmt;
-use std::result;
-use std::str;
+use std::{convert::From, error, fmt, result, str};
 
 pub type Result<T> = result::Result<T, Error>;
 
@@ -40,8 +36,8 @@ pub enum ErrorKind {
 }
 
 impl ErrorKind {
-    pub(crate) fn as_str(&self) -> &'static str {
-        match *self {
+    pub(crate) fn as_str(self) -> &'static str {
+        match self {
             ErrorKind::Protocol => "invalid protocol",
             ErrorKind::IO => "io issue",
             ErrorKind::Client => "client error",

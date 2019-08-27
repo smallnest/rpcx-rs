@@ -4,14 +4,17 @@ use std::collections::HashMap;
 
 use super::selector::ClientSelector;
 
-use super::client::{Client, Opt};
-use super::RpcxClient;
-use futures::future;
-use futures::Future;
+use super::{
+    client::{Client, Opt},
+    RpcxClient,
+};
+use futures::{future, Future};
 use rpcx_protocol::{Error, ErrorKind, Metadata, Result, RpcxParam};
-use std::boxed::Box;
-use std::cell::RefCell;
-use std::sync::{Arc, RwLock, RwLockWriteGuard};
+use std::{
+    boxed::Box,
+    cell::RefCell,
+    sync::{Arc, RwLock, RwLockWriteGuard},
+};
 use strum_macros::{Display, EnumIter, EnumString};
 
 #[derive(Debug, Copy, Clone, Display, PartialEq, EnumIter, EnumString)]
@@ -22,7 +25,8 @@ pub enum FailMode {
     Failfast = 1,
     //Failtry use current client again
     Failtry = 2,
-    //Failbackup select another server if the first server doesn't respon in specified time and use the fast response.
+    //Failbackup select another server if the first server doesn't respon in specified time and
+    // use the fast response.
     Failbackup = 3,
 }
 
@@ -57,7 +61,7 @@ impl<S: ClientSelector> XClient<S> {
             fail_mode: fm,
             selector: s,
             clients: Arc::new(RwLock::new(HashMap::new())),
-            opt: opt,
+            opt,
         }
     }
 
@@ -72,7 +76,7 @@ impl<S: ClientSelector> XClient<S> {
             match clients_guard.get(&k) {
                 Some(_) => {}
                 None => {
-                    let mut items: Vec<&str> = k.split("@").collect();
+                    let mut items: Vec<&str> = k.split('@').collect();
                     if items.len() == 1 {
                         items.insert(0, "tcp");
                     }
@@ -99,8 +103,8 @@ impl<S: ClientSelector> XClient<S> {
 impl<S: ClientSelector> RpcxClient for XClient<S> {
     fn call<T>(
         &mut self,
-        service_path: &String,
-        service_method: &String,
+        service_path: &str,
+        service_method: &str,
         is_oneway: bool,
         metadata: &Metadata,
         args: &dyn RpcxParam,
@@ -110,7 +114,7 @@ impl<S: ClientSelector> RpcxClient for XClient<S> {
     {
         // get a key from selector
         let selector = &mut (self.selector);
-        let k = selector.select(&service_path, &service_method, args);
+        let k = selector.select(service_path, service_method, args);
         if k.is_empty() {
             return Some(Err(Error::new(
                 ErrorKind::Client,
@@ -120,8 +124,8 @@ impl<S: ClientSelector> RpcxClient for XClient<S> {
 
         let mut clients_guard = self.clients.write().unwrap();
         let client = self.get_cached_client(&mut clients_guard, k.clone());
-        if client.is_err() {
-            return Some(Err(Error::new(ErrorKind::Client, client.unwrap_err())));
+        if let Err(err) = client {
+            return Some(Err(Error::new(ErrorKind::Client, err)));
         }
         // invoke this client
         let mut selected_client = client.unwrap().borrow_mut();
@@ -146,8 +150,8 @@ impl<S: ClientSelector> RpcxClient for XClient<S> {
                                 // re-select
                                 let mut clients_guard = self.clients.write().unwrap();
                                 let client = self.get_cached_client(&mut clients_guard, k.clone());
-                                if client.is_err() {
-                                    return Some(Err(client.unwrap_err()));
+                                if let Err(err) = client {
+                                    return Some(Err(err));
                                 }
                                 let mut selected_client = client.unwrap().borrow_mut();
 
@@ -192,15 +196,15 @@ impl<S: ClientSelector> RpcxClient for XClient<S> {
                     }
                 }
 
-                return Some(Err(rt_err));
+                Some(Err(rt_err))
             }
             Ok(r) => Some(Ok(r)),
         }
     }
     fn acall<T>(
         &mut self,
-        service_path: &String,
-        service_method: &String,
+        service_path: &str,
+        service_method: &str,
         metadata: &Metadata,
         args: &dyn RpcxParam,
     ) -> Box<dyn Future<Item = Result<T>, Error = Error> + Send + Sync>
@@ -208,7 +212,7 @@ impl<S: ClientSelector> RpcxClient for XClient<S> {
         T: RpcxParam + Default + Sync + Send + 'static,
     {
         // get a key from selector
-        let k = self.selector.select(&service_path, &service_method, args);
+        let k = self.selector.select(service_path, service_method, args);
         if k.is_empty() {
             return Box::new(future::err(Error::from("server not found".to_owned())));
         }
@@ -216,13 +220,12 @@ impl<S: ClientSelector> RpcxClient for XClient<S> {
         let mut clients_guard = self.clients.write().unwrap();
         let client = self.get_cached_client(&mut clients_guard, k.clone());
 
-        if client.is_err() {
-            return Box::new(future::err(client.unwrap_err()));
+        if let Err(err) = client {
+            return Box::new(future::err(err));
         }
 
         // invoke this client
         let mut selected_client = client.unwrap().borrow_mut();
-        let rt = (*selected_client).acall::<T>(service_path, service_method, metadata, args);
-        rt
+        selected_client.acall::<T>(service_path, service_method, metadata, args)
     }
 }

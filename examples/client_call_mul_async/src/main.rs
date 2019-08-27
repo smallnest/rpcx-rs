@@ -15,8 +15,8 @@ pub fn main() {
         let service_path = String::from("Arith");
         let service_method = String::from("Mul");
         let metadata = HashMap::new();
-        let args = ArithAddArgs { a: a, b: 10 };
-        a = a + 1;
+        let args = ArithAddArgs { a, b: 10 };
+        a += 1;
 
         let reply: Result<Result<ArithAddReply>> = c
             .acall(&service_path, &service_method, &metadata, &args)

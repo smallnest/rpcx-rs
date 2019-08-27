@@ -1,19 +1,16 @@
-use rand::prelude::*;
-use rand::Rng;
+use rand::{prelude::*, Rng};
 use rpcx_protocol::{RpcxParam, SerializeType};
-use std::collections::HashMap;
-use std::sync::{Arc, RwLock};
+use std::{
+    collections::HashMap,
+    sync::{Arc, RwLock},
+};
 
 pub trait ClientSelector {
-    fn select(
-        &mut self,
-        service_path: &String,
-        service_method: &String,
-        args: &dyn RpcxParam,
-    ) -> String;
+    fn select(&mut self, service_path: &str, service_method: &str, args: &dyn RpcxParam) -> String;
     fn update_server(&self, servers: &HashMap<String, String>);
 }
 
+#[derive(Default)]
 pub struct RandomSelector {
     pub servers: Arc<RwLock<Vec<String>>>,
     rnd: ThreadRng,
@@ -31,8 +28,8 @@ impl RandomSelector {
 impl ClientSelector for RandomSelector {
     fn select(
         &mut self,
-        _service_path: &String,
-        _service_method: &String,
+        _service_path: &str,
+        _service_method: &str,
         _args: &dyn RpcxParam,
     ) -> String {
         let servers = (*self).servers.read().unwrap();
@@ -49,6 +46,7 @@ impl ClientSelector for RandomSelector {
     }
 }
 
+#[derive(Default)]
 pub struct RoundbinSelector {
     pub servers: Arc<RwLock<Vec<String>>>,
     index: usize,
@@ -66,8 +64,8 @@ impl RoundbinSelector {
 impl ClientSelector for RoundbinSelector {
     fn select(
         &mut self,
-        _service_path: &String,
-        _service_method: &String,
+        _service_path: &str,
+        _service_method: &str,
         _args: &dyn RpcxParam,
     ) -> String {
         let servers = (*self).servers.read().unwrap();
@@ -84,6 +82,7 @@ impl ClientSelector for RoundbinSelector {
     }
 }
 
+#[derive(Default)]
 pub struct ConsistentHashSelector {
     pub servers: Arc<RwLock<Vec<String>>>,
 }
@@ -98,21 +97,16 @@ impl ConsistentHashSelector {
 
 fn hash_request(
     data: &mut Vec<u8>,
-    service_path: &String,
-    service_method: &String,
+    service_path: &str,
+    service_method: &str,
     args: &dyn RpcxParam,
 ) {
-    data.extend(service_path.clone().into_bytes());
-    data.extend(service_method.clone().into_bytes());
+    data.extend(service_path.to_string().into_bytes());
+    data.extend(service_method.to_string().into_bytes());
     data.extend(args.into_bytes(SerializeType::JSON).unwrap());
 }
 impl ClientSelector for ConsistentHashSelector {
-    fn select(
-        &mut self,
-        service_path: &String,
-        service_method: &String,
-        args: &dyn RpcxParam,
-    ) -> String {
+    fn select(&mut self, service_path: &str, service_method: &str, args: &dyn RpcxParam) -> String {
         let servers = (*self).servers.read().unwrap();
         let size = servers.len();
 

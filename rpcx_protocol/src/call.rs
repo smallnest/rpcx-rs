@@ -1,10 +1,13 @@
 use crate::Result;
-use futures::task::{current, Task};
-use futures::{Async, Future, Poll};
-use std::cell::RefCell;
-use std::fmt::Debug;
-use std::sync::Arc;
-use std::sync::Mutex;
+use futures::{
+    task::{current, Task},
+    Async, Future, Poll,
+};
+use std::{
+    cell::RefCell,
+    fmt::Debug,
+    sync::{Arc, Mutex},
+};
 
 use crate::SerializeType;
 
@@ -44,7 +47,7 @@ pub struct Call {
 impl Call {
     pub fn new(seq: u64) -> Self {
         Call {
-            seq: seq,
+            seq,
             is_client_error: true,
             state: Arc::new(Mutex::new(Status {
                 ready: false,

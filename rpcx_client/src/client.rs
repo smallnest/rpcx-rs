@@ -1,19 +1,22 @@
-use std::cell::RefCell;
-use std::collections::HashMap;
-use std::error::Error as StdError;
-use std::io::{BufReader, BufWriter, Write};
-use std::net::{Shutdown, SocketAddr, TcpStream};
-use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::mpsc::{self, Receiver, SendError, Sender};
-use std::sync::{Arc, Mutex};
-use std::thread;
-use std::time::Duration;
+use std::{
+    cell::RefCell,
+    collections::HashMap,
+    error::Error as StdError,
+    io::{BufReader, BufWriter, Write},
+    net::{Shutdown, SocketAddr, TcpStream},
+    sync::{
+        atomic::{AtomicU64, Ordering},
+        mpsc::{self, Receiver, SendError, Sender},
+        Arc, Mutex,
+    },
+    thread,
+    time::Duration,
+};
 
 use futures::future::*;
 
 use super::RpcxClient;
-use rpcx_protocol::call::*;
-use rpcx_protocol::*;
+use rpcx_protocol::{call::*, *};
 
 #[derive(Debug, Copy, Clone)]
 pub struct Opt {
@@ -75,17 +78,15 @@ impl Client {
         }
     }
     pub fn start(&mut self) -> Result<()> {
-        let stream: TcpStream;
-
-        if self.opt.connect_timeout.as_millis() == 0 {
-            stream = TcpStream::connect(self.addr.as_str())?;
+        let stream = if self.opt.connect_timeout.as_millis() == 0 {
+            TcpStream::connect(self.addr.as_str())?
         } else {
             let socket_addr: SocketAddr = self
                 .addr
                 .parse()
                 .map_err(|err| Error::new(ErrorKind::Network, err))?;
-            stream = TcpStream::connect_timeout(&socket_addr, self.opt.connect_timeout)?;
-        }
+            TcpStream::connect_timeout(&socket_addr, self.opt.connect_timeout)?
+        };
 
         if self.opt.read_timeout.as_millis() > 0 {
             stream.set_read_timeout(Some(self.opt.read_timeout))?;
@@ -111,14 +112,15 @@ impl Client {
             loop {
                 let mut msg = Message::new();
                 match msg.decode(&mut reader) {
-                    Ok(()) => match calls.lock().unwrap().remove(&msg.get_seq()) {
-                        Some(call) => {
+                    Ok(()) => {
+                        if let Some(call) = calls.lock().unwrap().remove(&msg.get_seq()) {
                             let internal_call_cloned = call.clone();
                             let mut internal_call_mutex = internal_call_cloned.lock().unwrap();
                             let internal_call = internal_call_mutex.get_mut();
                             internal_call.is_client_error = false;
                             if let Some(MessageStatusType::Error) = msg.get_message_status_type() {
-                                internal_call.error = msg.get_error().unwrap_or("".to_owned());
+                                internal_call.error =
+                                    msg.get_error().unwrap_or_else(|| "".to_owned());
                             } else {
                                 internal_call.reply_data.extend_from_slice(&msg.payload);
                             }
@@ -129,8 +131,7 @@ impl Client {
                                 task.notify()
                             }
                         }
-                        None => {}
-                    },
+                    }
                     Err(error) => {
                         println!("failed to read: {}", error.to_string());
                         Self::drain_calls(calls, error);
@@ -185,8 +186,8 @@ impl Client {
     }
     pub fn send(
         &self,
-        service_path: &String,
-        service_method: &String,
+        service_path: &str,
+        service_method: &str,
         is_oneway: bool,
         is_heartbeat: bool,
         metadata: &Metadata,
@@ -200,8 +201,8 @@ impl Client {
         req.set_serialize_type(self.opt.serialize_type);
         req.set_compress_type(self.opt.compress_type);
         req.set_seq(seq);
-        req.service_path = service_path.clone();
-        req.service_method = service_method.clone();
+        req.service_path = service_path.to_string();
+        req.service_method = service_method.to_string();
 
         let mut new_metadata = HashMap::with_capacity(metadata.len());
         for (k, v) in metadata {
@@ -213,8 +214,7 @@ impl Client {
 
         let data = req.encode();
 
-        let mut call_future = CallFuture::new(None);
-        if !is_oneway && !is_heartbeat {
+        let call_future = if !is_oneway && !is_heartbeat {
             let callback = Call::new(seq);
             let arc_call = Arc::new(Mutex::new(RefCell::from(callback)));
             self.calls
@@ -223,13 +223,12 @@ impl Client {
                 .unwrap()
                 .insert(seq, arc_call.clone());
 
-            call_future = CallFuture::new(Some(arc_call));
-        }
-
-        let send_data = RpcData {
-            seq: seq,
-            data: data,
+            CallFuture::new(Some(arc_call))
+        } else {
+            CallFuture::new(None)
         };
+
+        let send_data = RpcData { seq, data };
         match self.chan_sender.clone().send(send_data) {
             Ok(_) => {}
             Err(err) => self.remove_call_with_senderr(err),
@@ -242,19 +241,16 @@ impl Client {
         let seq = err.0.seq;
         let calls = self.calls.clone();
         let mut m = calls.lock().unwrap();
-        match m.remove(&seq) {
-            Some(call) => {
-                let internal_call_cloned = call.clone();
-                let mut internal_call_mutex = internal_call_cloned.lock().unwrap();
-                let internal_call = internal_call_mutex.get_mut();
-                internal_call.error = String::from(err.description());
-                let mut status = internal_call.state.lock().unwrap();
-                status.ready = true;
-                if let Some(ref task) = status.task {
-                    task.notify()
-                }
+        if let Some(call) = m.remove(&seq) {
+            let internal_call_cloned = call.clone();
+            let mut internal_call_mutex = internal_call_cloned.lock().unwrap();
+            let internal_call = internal_call_mutex.get_mut();
+            internal_call.error = String::from(err.description());
+            let mut status = internal_call.state.lock().unwrap();
+            status.ready = true;
+            if let Some(ref task) = status.task {
+                task.notify()
             }
-            None => {}
         }
     }
 
@@ -277,19 +273,16 @@ impl Client {
     fn remove_call_with_err<T: StdError>(&mut self, seq: u64, err: T) {
         let calls = self.calls.clone();
         let m = calls.lock().unwrap();
-        match m.get(&seq) {
-            Some(call) => {
-                let internal_call_cloned = call.clone();
-                let mut internal_call_mutex = internal_call_cloned.lock().unwrap();
-                let internal_call = internal_call_mutex.get_mut();
-                internal_call.error = String::from(err.description());
-                let mut status = internal_call.state.lock().unwrap();
-                status.ready = true;
-                if let Some(ref task) = status.task {
-                    task.notify()
-                }
+        if let Some(call) = m.get(&seq) {
+            let internal_call_cloned = call.clone();
+            let mut internal_call_mutex = internal_call_cloned.lock().unwrap();
+            let internal_call = internal_call_mutex.get_mut();
+            internal_call.error = String::from(err.description());
+            let mut status = internal_call.state.lock().unwrap();
+            status.ready = true;
+            if let Some(ref task) = status.task {
+                task.notify()
             }
-            None => {}
         }
     }
 }
@@ -297,8 +290,8 @@ impl Client {
 impl RpcxClient for Client {
     fn call<T>(
         &mut self,
-        service_path: &String,
-        service_method: &String,
+        service_path: &str,
+        service_method: &str,
         is_oneway: bool,
         metadata: &Metadata,
         args: &dyn RpcxParam,
@@ -325,10 +318,10 @@ impl RpcxClient for Client {
         let arc_call_3 = arc_call_2.get_mut();
         let reply_data = &arc_call_3.reply_data;
 
-        if arc_call_3.error.len() > 0 {
+        if arc_call_3.error.is_empty() {
             let err = &arc_call_3.error;
             if arc_call_3.is_client_error {
-                return Some(Err(Error::new(ErrorKind::Client,String::from(err))));
+                return Some(Err(Error::new(ErrorKind::Client, String::from(err))));
             } else {
                 return Some(Err(Error::from(String::from(err))));
             }
@@ -337,14 +330,14 @@ impl RpcxClient for Client {
         let mut reply: T = Default::default();
         match reply.from_slice(self.opt.serialize_type, &reply_data) {
             Ok(()) => Some(Ok(reply)),
-            Err(err) => Some(Err(Error::from(err))),
+            Err(err) => Some(Err(err)),
         }
     }
 
     fn acall<T>(
         &mut self,
-        service_path: &String,
-        service_method: &String,
+        service_path: &str,
+        service_method: &str,
         metadata: &Metadata,
         args: &dyn RpcxParam,
     ) -> Box<dyn Future<Item = Result<T>, Error = Error> + Send + Sync>
@@ -361,18 +354,18 @@ impl RpcxClient for Client {
                 let arc_call_3 = arc_call_2.get_mut();
                 let reply_data = &arc_call_3.reply_data;
 
-                if arc_call_3.error.len() > 0 {
+                if !arc_call_3.error.is_empty() {
                     let err = &arc_call_3.error;
                     return Err(Error::from(String::from(err)));
                 }
 
                 let mut reply: T = Default::default();
                 match reply.from_slice(st, &reply_data) {
-                    Ok(()) => return Ok(reply),
-                    Err(err) => return Err(Error::from(err)),
+                    Ok(()) => Ok(reply),
+                    Err(err) => Err(err),
                 }
             })
-            .map_err(|err| Error::from(err));
+            .map_err(Error::from);
 
         Box::new(rt)
     }

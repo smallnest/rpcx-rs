@@ -1,9 +1,7 @@
 use std::collections::hash_map::HashMap;
 
 use mul_model::*;
-use rpcx::Client;
-use rpcx::RpcxClient;
-use rpcx::{CompressType, Result, SerializeType};
+use rpcx::{Client, CompressType, Result, RpcxClient, SerializeType};
 
 pub fn main() {
     let mut c: Client = Client::new("127.0.0.1:8972");
@@ -15,8 +13,8 @@ pub fn main() {
         let service_path = String::from("Arith");
         let service_method = String::from("Mul");
         let metadata = HashMap::new();
-        let args = ArithAddArgs { a: a, b: 10 };
-        a = a + 1;
+        let args = ArithAddArgs { a, b: 10 };
+        a += 1;
 
         let reply: Option<Result<ArithAddReply>> =
             c.call(&service_path, &service_method, false, &metadata, &args);

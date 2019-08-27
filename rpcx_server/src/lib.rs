@@ -1,12 +1,16 @@
-use std::boxed::Box;
-use std::collections::HashMap;
-use std::sync::{Arc, RwLock};
+use std::{
+    boxed::Box,
+    collections::HashMap,
+    sync::{Arc, RwLock},
+};
 
 use std::net::SocketAddr;
 
 use rpcx_protocol::*;
-use std::io::{BufReader, BufWriter, Write};
-use std::net::{Shutdown, TcpListener, TcpStream};
+use std::{
+    io::{BufReader, BufWriter, Write},
+    net::{Shutdown, TcpListener, TcpStream},
+};
 
 use scoped_threadpool::Pool;
 
@@ -129,8 +133,14 @@ fn invoke_fn(stream: TcpStream, msg: Message, f: RpcxFn) {
     let data = reply_msg.encode();
 
     let mut writer = BufWriter::new(stream.try_clone().unwrap());
-    &writer.write_all(&data);
-    &writer.flush();
+    match writer.write_all(&data) {
+        Ok(()) => {}
+        Err(_err) => {}
+    }
+    match writer.flush() {
+        Ok(()) => {}
+        Err(_err) => {}
+    }
 }
 
 #[macro_export]

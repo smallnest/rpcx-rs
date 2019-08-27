@@ -1,7 +1,9 @@
 use super::selector::ClientSelector;
-use std::collections::HashMap;
-use std::ops::Deref;
-use std::sync::{Arc, RwLock};
+use std::{
+    collections::HashMap,
+    ops::Deref,
+    sync::{Arc, RwLock},
+};
 
 pub trait Discovery<'a> {
     fn get_services(&self) -> HashMap<String, String>;
@@ -9,6 +11,7 @@ pub trait Discovery<'a> {
     fn close(&self);
 }
 
+#[derive(Default)]
 pub struct StaticDiscovery<'a> {
     servers: HashMap<String, String>,
     selectors: Arc<RwLock<Vec<&'a dyn ClientSelector>>>,

@@ -1,14 +1,14 @@
 use byteorder::{BigEndian, ByteOrder};
 use enum_primitive_derive::Primitive;
-use flate2::read::DeflateDecoder;
-use flate2::write::DeflateEncoder;
-use flate2::Compression;
+use flate2::{read::DeflateDecoder, write::DeflateEncoder, Compression};
 use num_traits::{FromPrimitive, ToPrimitive};
 use strum_macros::{Display, EnumIter, EnumString};
 
-use std::cell::RefCell;
-use std::collections::hash_map::HashMap;
-use std::io::{Read, Write};
+use std::{
+    cell::RefCell,
+    collections::hash_map::HashMap,
+    io::{Read, Write},
+};
 
 use crate::{Error, Result};
 
@@ -121,7 +121,7 @@ impl RpcxMessage for Message {
         MessageType::from_u8((self.header[2] & 0x80) >> 7 as u8)
     }
     fn set_message_type(&mut self, mt: MessageType) {
-        self.header[2] = self.header[2] | (mt.to_u8().unwrap() << 7);
+        self.header[2] |= mt.to_u8().unwrap() << 7;
     }
     fn is_heartbeat(&self) -> bool {
         self.header[2] & 0x40 == 0x40
@@ -150,13 +150,13 @@ impl RpcxMessage for Message {
         self.header[2] = (self.header[2] & !0x1C) | (ct.to_u8().unwrap() << 2 & 0x1C);
     }
     fn get_message_status_type(&self) -> Option<MessageStatusType> {
-        return MessageStatusType::from_u8(self.header[2] & 0x03);
+        MessageStatusType::from_u8(self.header[2] & 0x03)
     }
     fn set_message_status_type(&mut self, mst: MessageStatusType) {
         self.header[2] = (self.header[2] & !0x03) | (mst.to_u8().unwrap() & 0x03);
     }
     fn get_serialize_type(&self) -> Option<SerializeType> {
-        return SerializeType::from_u8((self.header[3] & 0xF0) >> 4);
+        SerializeType::from_u8((self.header[3] & 0xF0) >> 4)
     }
     fn set_serialize_type(&mut self, st: SerializeType) {
         self.header[3] = (self.header[3] & !0xF0) | (st.to_u8().unwrap() << 4)
@@ -313,7 +313,7 @@ impl RpcxMessage for Message {
                 let metadata = &self.metadata;
                 let metadata2 = metadata.borrow();
                 let err_msg = metadata2.get(&SERVICE_ERROR.to_owned())?;
-                return Some(String::from(err_msg));
+                Some(String::from(err_msg))
             }
             _ => None,
         }
