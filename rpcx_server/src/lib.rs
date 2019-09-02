@@ -14,11 +14,16 @@ use std::{
 
 use scoped_threadpool::Pool;
 
+pub mod plugin;
+pub use plugin::*;
+
 pub type RpcxFn = fn(&[u8], SerializeType) -> Result<Vec<u8>>;
 pub struct Server {
     pub addr: String,
+    pub ln: Option<TcpListener>,
     pub services: Arc<RwLock<HashMap<String, Box<RpcxFn>>>>,
     pub pool: Pool,
+    register_plugins: Arc<RwLock<Vec<Box<dyn RegisterPlugin + Send + Sync>>>>,
 }
 
 impl Server {
@@ -32,6 +37,8 @@ impl Server {
             addr: s,
             services: Arc::new(RwLock::new(HashMap::new())),
             pool: Pool::new(thread_number),
+            register_plugins: Arc::new(RwLock::new(Vec::new())),
+            ln: None,
         }
     }
 
@@ -57,10 +64,16 @@ impl Server {
 
         let listener = TcpListener::bind(&addr)?;
         println!("Listening on: {}", addr);
+        self.ln = Some(listener.try_clone()?);
 
-        for stream in listener.incoming() {
+        'accept_loop: for stream in listener.incoming() {
             match stream {
                 Ok(stream) => {
+                    // for p in &mut self.connect_plugins {
+                    //     if p.connected(&stream) {
+                    //         break 'accept_loop;
+                    //     }
+                    // }
                     self.process(stream);
                 }
                 Err(e) => {
@@ -72,6 +85,11 @@ impl Server {
         Ok(())
     }
 
+    pub fn close(&self) {
+        if let Some(ln) = &self.ln {
+            drop(ln)
+        }
+    }
     fn process(&mut self, stream: TcpStream) {
         let services_cloned = self.services.clone();
         let local_stream = stream.try_clone().unwrap();
