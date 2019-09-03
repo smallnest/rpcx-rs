@@ -12,6 +12,11 @@ use std::{
     net::{Shutdown, TcpListener, TcpStream},
 };
 
+use std::{
+    os::unix::io::{AsRawFd, RawFd},
+    thread,
+};
+
 use scoped_threadpool::Pool;
 
 pub mod plugin;
@@ -20,9 +25,9 @@ pub use plugin::*;
 pub type RpcxFn = fn(&[u8], SerializeType) -> Result<Vec<u8>>;
 pub struct Server {
     pub addr: String,
-    pub ln: Option<TcpListener>,
+    raw_fd: Option<RawFd>,
     pub services: Arc<RwLock<HashMap<String, Box<RpcxFn>>>>,
-    pub pool: Pool,
+    thread_number: u32,
     register_plugins: Arc<RwLock<Vec<Box<dyn RegisterPlugin + Send + Sync>>>>,
 }
 
@@ -36,9 +41,9 @@ impl Server {
         Server {
             addr: s,
             services: Arc::new(RwLock::new(HashMap::new())),
-            pool: Pool::new(thread_number),
+            thread_number,
             register_plugins: Arc::new(RwLock::new(Vec::new())),
-            ln: None,
+            raw_fd: None,
         }
     }
 
@@ -56,15 +61,8 @@ impl Server {
         Some(**box_fn)
     }
 
-    pub fn start(&mut self) -> Result<()> {
-        let addr = self
-            .addr
-            .parse::<SocketAddr>()
-            .map_err(|err| Error::new(ErrorKind::Other, err))?;
-
-        let listener = TcpListener::bind(&addr)?;
-        println!("Listening on: {}", addr);
-        self.ln = Some(listener.try_clone()?);
+    pub fn start_with_listener(&self, listener: TcpListener) -> Result<()> {
+        let thread_number = self.thread_number;
 
         'accept_loop: for stream in listener.incoming() {
             match stream {
@@ -74,27 +72,52 @@ impl Server {
                     //         break 'accept_loop;
                     //     }
                     // }
-                    self.process(stream);
+
+                    let services_cloned = self.services.clone();
+                    thread::spawn(move || {
+                        Server::process(thread_number, services_cloned, stream);
+                    });
                 }
                 Err(e) => {
-                    println!("Unable to connect: {}", e);
+                    println!("Unable to accept: {}", e);
+                    return Err(Error::new(ErrorKind::Network, e));
                 }
             }
         }
 
         Ok(())
     }
+    pub fn start(&mut self) -> Result<()> {
+        let addr = self
+            .addr
+            .parse::<SocketAddr>()
+            .map_err(|err| Error::new(ErrorKind::Other, err))?;
+
+        let listener = TcpListener::bind(&addr)?;
+        println!("Listening on: {}", addr);
+
+        self.raw_fd = Some(listener.as_raw_fd());
+
+        self.start_with_listener(listener)
+    }
 
     pub fn close(&self) {
-        if let Some(ln) = &self.ln {
-            drop(ln)
+        if let Some(raw_fd) = self.raw_fd {
+            unsafe {
+                libc::close(raw_fd);
+            }
         }
     }
-    fn process(&mut self, stream: TcpStream) {
-        let services_cloned = self.services.clone();
+    fn process(
+        thread_number: u32,
+        service: Arc<RwLock<HashMap<String, Box<RpcxFn>>>>,
+        stream: TcpStream,
+    ) {
+        let services_cloned = service;
         let local_stream = stream.try_clone().unwrap();
 
-        self.pool.scoped(|scoped| {
+        let mut pool = Pool::new(thread_number);
+        pool.scoped(|scoped| {
             let mut reader = BufReader::new(stream.try_clone().unwrap());
             loop {
                 let mut msg = Message::new();

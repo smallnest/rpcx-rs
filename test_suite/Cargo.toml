@@ -7,6 +7,6 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dev-dependencies]
-crossbeam = "0.3.0"
+libc = "0.2.62"
 rpcx =  { version = "0.2.0", path = "../rpcx" }
 mul_model =  { version = "0.2.0", path = "../examples/mul_model" }

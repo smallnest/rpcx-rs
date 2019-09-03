@@ -156,7 +156,7 @@ impl Client {
                     Ok(rpcdata) => {
                         match writer.write_all(rpcdata.data.as_slice()) {
                             Ok(()) => {
-                                println!("wrote");
+                                //println!("wrote");
                             }
                             Err(error) => {
                                 println!("failed to write: {}", error.to_string());
@@ -168,7 +168,7 @@ impl Client {
 
                         match writer.flush() {
                             Ok(()) => {
-                                println!("flushed");
+                                //println!("flushed");
                             }
                             Err(error) => {
                                 println!("failed to flush: {}", error.to_string());
