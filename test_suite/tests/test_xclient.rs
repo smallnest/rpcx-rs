@@ -20,6 +20,7 @@ mod tests {
 
     #[test]
     fn test_xclient_and_server() {
+        // setup server
         let mut rpc_server = Server::new("0.0.0.0:8972".to_owned(), 0);
         register_func!(rpc_server, "Arith", "Add", add, ArithAddArgs, ArithAddReply);
         register_func!(rpc_server, "Arith", "Mul", mul, ArithAddArgs, ArithAddReply);
@@ -37,14 +38,23 @@ mod tests {
             Err(err) => println!("{}", err),
         });
 
-        let mut c: Client = Client::new("127.0.0.1:8972");
-        match c.start() {
-            Ok(_) => {}
-            Err(err) => println!("{}", err),
-        }
+        // setup client
 
-        c.opt.serialize_type = SerializeType::JSON;
-        c.opt.compress_type = CompressType::Gzip;
+        // use static server
+        let mut servers = HashMap::new();
+        servers.insert("tcp@127.0.0.1:8972".to_owned(), "weight=10".to_owned());
+        let selector = WeightedSelector::new();
+
+        // set discovery with static peers
+        let disc = StaticDiscovery::new();
+        disc.add_selector(&selector);
+        disc.update_servers(&servers);
+
+        // init xclient
+        let mut opt: Opt = Default::default();
+        opt.serialize_type = SerializeType::JSON;
+        opt.compress_type = CompressType::Gzip;
+        let mut xc = XClient::new(FailMode::Failfast, Box::new(selector), opt);
 
         let mut a = 1;
         for _ in 0..10 {
@@ -55,7 +65,7 @@ mod tests {
             a += 1;
 
             let reply: Option<Result<ArithAddReply>> =
-                c.call(&service_path, &service_method, false, &metadata, &args);
+                xc.call(&service_path, &service_method, false, &metadata, &args);
             if reply.is_none() {
                 continue;
             }
@@ -66,9 +76,9 @@ mod tests {
                 Err(err) => assert!(false, err),
             }
         }
-        // clean
-        drop(c);
 
+        // clean
+        drop(xc);
         unsafe {
             libc::close(raw_fd);
         }
