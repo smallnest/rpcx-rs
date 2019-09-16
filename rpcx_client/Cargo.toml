@@ -1,6 +1,6 @@
 [package]
 name = "rpcx_client"
-version = "0.2.0"
+version = "0.2.1"
 authors = ["smallnest@gmail.com"]
 license = "MIT"
 readme = "README.md"
@@ -15,7 +15,9 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+weighted-rs = "0.1.2"
 futures = "0.1.28"
+qstring = "0.7.0"
 evmap = "6.0.0"
 rand = "0.7"
 strum = "0.15.0"
@@ -23,5 +25,5 @@ strum_macros = "0.15.0"
 num-traits = "0.2.8"
 enum-primitive-derive = "0.1.2"
 jumphash = "0.1.6"
-rpcx_protocol =  { version = "0.2.0", path = "../rpcx_protocol" }
-rpcx_derive =  { version = "0.2.0", path = "../rpcx_derive" }
+rpcx_protocol =  { version = "0.2.1", path = "../rpcx_protocol" }
+rpcx_derive =  { version = "0.2.1", path = "../rpcx_derive" }

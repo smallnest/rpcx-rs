@@ -1,6 +1,6 @@
 [package]
 name = "mul_model"
-version = "0.2.0"
+version = "0.2.1"
 authors = ["smallnest <smallnest@gmail.com>"]
 edition = "2018"
 
@@ -8,4 +8,4 @@ edition = "2018"
 serde = { version = "1.0.98",features = ["derive"]}
 serde_json = "1.0.40" 
 rmp-serde = "0.13.7"
-rpcx =  { version = "0.2.0", path = "../../rpcx" }
+rpcx =  { version = "0.2.1", path = "../../rpcx" }

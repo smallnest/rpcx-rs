@@ -5,9 +5,8 @@ mod tests {
 
     use std::{
         collections::HashMap,
-        io::{BufReader, BufWriter, Write},
-        net::{Shutdown, SocketAddr, TcpListener, TcpStream},
-        os::unix::io::{AsRawFd, RawFd},
+        net::{SocketAddr, TcpListener},
+        os::unix::io::AsRawFd,
         thread,
     };
 
@@ -33,14 +32,20 @@ mod tests {
 
         let listener = TcpListener::bind(&addr).unwrap();
         let raw_fd = listener.as_raw_fd();
-        let handler = thread::spawn(move || {
-            &rpc_server.start_with_listener(listener).unwrap();
+        let handler = thread::spawn(move || match rpc_server.start_with_listener(listener) {
+            Ok(()) => {}
+            Err(err) => println!("{}", err),
         });
 
         let mut c: Client = Client::new("127.0.0.1:8972");
-        c.start().map_err(|err| println!("{}", err)).unwrap();
+        match c.start() {
+            Ok(_) => {}
+            Err(err) => println!("{}", err),
+        }
+
         c.opt.serialize_type = SerializeType::JSON;
         c.opt.compress_type = CompressType::Gzip;
+
         let mut a = 1;
         for _ in 0..10 {
             let service_path = String::from("Arith");
@@ -62,6 +67,8 @@ mod tests {
             }
         }
         // clean
+        drop(c);
+
         unsafe {
             libc::close(raw_fd);
         }

@@ -132,10 +132,13 @@ impl Client {
                             }
                         }
                     }
-                    Err(error) => {
-                        println!("failed to read: {}", error.to_string());
-                        Self::drain_calls(calls, error);
-                        read_stream.shutdown(Shutdown::Both).unwrap();
+                    Err(err) => {
+                        println!("failed to read: {}", err.to_string());
+                        Self::drain_calls(calls, err);
+                        match read_stream.shutdown(Shutdown::Both) {
+                            Ok(_) => {}
+                            Err(err) => eprintln!("failed to shutdown stream: {}", err),
+                        }
                         return;
                     }
                 }
@@ -148,8 +151,8 @@ impl Client {
             let mut writer = BufWriter::new(write_stream.try_clone().unwrap());
             loop {
                 match chan_receiver.lock().unwrap().recv() {
-                    Err(error) => {
-                        println!("failed to fetch RpcData: {}", error.to_string());
+                    Err(err) => {
+                        //eprintln!("failed to fetch RpcData: {}", err.to_string());
                         write_stream.shutdown(Shutdown::Both).unwrap();
                         return;
                     }
@@ -158,9 +161,9 @@ impl Client {
                             Ok(()) => {
                                 //println!("wrote");
                             }
-                            Err(error) => {
-                                println!("failed to write: {}", error.to_string());
-                                Self::drain_calls(send_calls.clone(), error);
+                            Err(err) => {
+                                //println!("failed to write: {}", err.to_string());
+                                Self::drain_calls(send_calls.clone(), err);
                                 write_stream.shutdown(Shutdown::Both).unwrap();
                                 return;
                             }
@@ -170,9 +173,9 @@ impl Client {
                             Ok(()) => {
                                 //println!("flushed");
                             }
-                            Err(error) => {
-                                println!("failed to flush: {}", error.to_string());
-                                Self::drain_calls(send_calls.clone(), error);
+                            Err(err) => {
+                                //println!("failed to flush: {}", err.to_string());
+                                Self::drain_calls(send_calls.clone(), err);
                                 write_stream.shutdown(Shutdown::Both).unwrap();
                                 return;
                             }
@@ -184,6 +187,7 @@ impl Client {
 
         Ok(())
     }
+
     pub fn send(
         &self,
         service_path: &str,

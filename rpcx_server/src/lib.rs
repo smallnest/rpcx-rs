@@ -67,19 +67,13 @@ impl Server {
         'accept_loop: for stream in listener.incoming() {
             match stream {
                 Ok(stream) => {
-                    // for p in &mut self.connect_plugins {
-                    //     if p.connected(&stream) {
-                    //         break 'accept_loop;
-                    //     }
-                    // }
-
                     let services_cloned = self.services.clone();
                     thread::spawn(move || {
                         Server::process(thread_number, services_cloned, stream);
                     });
                 }
                 Err(e) => {
-                    println!("Unable to accept: {}", e);
+                    //println!("Unable to accept: {}", e);
                     return Err(Error::new(ErrorKind::Network, e));
                 }
             }
@@ -149,14 +143,18 @@ impl Server {
                             }
                         }
                     }
-                    Err(error) => {
-                        println!("failed to read: {}", error.to_string());
+                    Err(err) => {
+                        //println!("failed to read: {}", err.to_string());
                         match local_stream.shutdown(Shutdown::Both) {
                             Ok(()) => {
-                                println!("client {} is closed", local_stream.peer_addr().unwrap())
+                                if let Ok(sa) = local_stream.peer_addr() {
+                                    println!("client {} is closed", sa)
+                                }
                             }
-                            Err(_) => {
-                                println!("client {} is closed", local_stream.peer_addr().unwrap())
+                            Err(e) => {
+                                if let Ok(sa) = local_stream.peer_addr() {
+                                    println!("client {} is closed. err: {}", sa, e)
+                                }
                             }
                         }
                         return;

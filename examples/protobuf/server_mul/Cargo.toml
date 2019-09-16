@@ -1,9 +1,9 @@
 [package]
 name = "server_mul_protobuf"
-version = "0.2.0"
+version = "0.2.1"
 authors = ["smallnest <smallnest@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-rpcx =  { version = "0.2.0", path = "../../../rpcx" }
-mul_model_proto =  { version = "0.2.0", path = "../mul_model_proto" } 
+rpcx =  { version = "0.2.1", path = "../../../rpcx" }
+mul_model_proto =  { version = "0.2.1", path = "../mul_model_proto" } 

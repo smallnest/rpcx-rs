@@ -1,9 +1,12 @@
+use qstring::QString;
 use rand::{prelude::*, Rng};
 use rpcx_protocol::{RpcxParam, SerializeType};
 use std::{
     collections::HashMap,
     sync::{Arc, RwLock},
 };
+
+use weighted_rs::*;
 
 pub trait ClientSelector {
     fn select(&mut self, service_path: &str, service_method: &str, args: &dyn RpcxParam) -> String;
@@ -39,7 +42,8 @@ impl ClientSelector for RandomSelector {
         String::from(s)
     }
     fn update_server(&self, map: &HashMap<String, String>) {
-        let mut servers = (*self).servers.write().unwrap();
+        let mut servers = self.servers.write().unwrap();
+        servers.clear();
         for k in map.keys() {
             servers.push(String::from(k));
         }
@@ -75,9 +79,56 @@ impl ClientSelector for RoundbinSelector {
         String::from(s)
     }
     fn update_server(&self, map: &HashMap<String, String>) {
-        let mut servers = (*self).servers.write().unwrap();
+        let mut servers = self.servers.write().unwrap();
+        servers.clear();
         for k in map.keys() {
             servers.push(String::from(k));
+        }
+    }
+}
+
+#[derive(Default)]
+pub struct WeightedSelector {
+    pub servers: Arc<RwLock<SmoothWeight<String>>>,
+}
+
+impl WeightedSelector {
+    pub fn new() -> Self {
+        WeightedSelector {
+            servers: Arc::new(RwLock::new(SmoothWeight::new())),
+        }
+    }
+}
+
+impl ClientSelector for WeightedSelector {
+    fn select(
+        &mut self,
+        _service_path: &str,
+        _service_method: &str,
+        _args: &dyn RpcxParam,
+    ) -> String {
+        let mut servers = self.servers.write().unwrap();
+        let mut sw = servers.next();
+        match &mut sw {
+            Some(s) => s.clone(),
+            None => String::new(),
+        }
+    }
+    fn update_server(&self, map: &HashMap<String, String>) {
+        let mut servers = self.servers.write().unwrap();
+
+        servers.reset();
+        for (k, v) in map.iter() {
+            let qs = QString::from(v.as_str());
+            if let Some(val) = qs.get("weight") {
+                if let Ok(w) = val.parse::<isize>() {
+                    servers.add(k.clone(), w);
+                } else {
+                    servers.add(k.clone(), 1);
+                }
+            } else {
+                servers.add(k.clone(), 1);
+            }
         }
     }
 }
