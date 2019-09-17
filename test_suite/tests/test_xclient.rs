@@ -22,8 +22,24 @@ mod tests {
     fn test_xclient_and_server() {
         // setup server
         let mut rpc_server = Server::new("0.0.0.0:8972".to_owned(), 0);
-        register_func!(rpc_server, "Arith", "Add", add, ArithAddArgs, ArithAddReply);
-        register_func!(rpc_server, "Arith", "Mul", mul, ArithAddArgs, ArithAddReply);
+        register_func!(
+            rpc_server,
+            "Arith",
+            "Add",
+            add,
+            "weight=10".to_owned(),
+            ArithAddArgs,
+            ArithAddReply
+        );
+        register_func!(
+            rpc_server,
+            "Arith",
+            "Mul",
+            mul,
+            "weight=10".to_owned(),
+            ArithAddArgs,
+            ArithAddReply
+        );
 
         let addr = rpc_server
             .addr

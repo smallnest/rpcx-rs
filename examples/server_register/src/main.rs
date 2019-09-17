@@ -6,16 +6,16 @@ fn test(args: ArithAddArgs) -> ArithAddReply {
 }
 
 fn main() {
-    let mut rpc_server = Server::new("0.0.0.0:0".to_owned(),0);
+    let mut rpc_server = Server::new("0.0.0.0:0".to_owned(), 0);
     register_func!(
         rpc_server,
         "Arith",
         "Add",
         test,
+        "".to_owned(),
         ArithAddArgs,
         ArithAddReply
     );
-
     let f = rpc_server
         .get_fn(String::from("Arith"), String::from("Add"))
         .unwrap();

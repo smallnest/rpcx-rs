@@ -15,9 +15,25 @@ fn mul(args: ProtoArgs) -> ProtoReply {
 
 fn main() {
     let mut rpc_server = Server::new("0.0.0.0:8972".to_owned(), 0);
-    register_func!(rpc_server, "Arith", "Add", add, ProtoArgs, ProtoReply);
+    register_func!(
+        rpc_server,
+        "Arith",
+        "Add",
+        add,
+        "".to_owned(),
+        ProtoArgs,
+        ProtoReply
+    );
 
-    register_func!(rpc_server, "Arith", "Mul", mul, ProtoArgs, ProtoReply);
+    register_func!(
+        rpc_server,
+        "Arith",
+        "Mul",
+        mul,
+        "".to_owned(),
+        ProtoArgs,
+        ProtoReply
+    );
 
     rpc_server.start().unwrap();
 }

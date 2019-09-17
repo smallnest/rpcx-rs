@@ -29,6 +29,7 @@ pub struct Server {
     pub services: Arc<RwLock<HashMap<String, Box<RpcxFn>>>>,
     thread_number: u32,
     register_plugins: Arc<RwLock<Vec<Box<dyn RegisterPlugin + Send + Sync>>>>,
+    connect_plugins: Arc<RwLock<Vec<Box<dyn ConnectPlugin + Send + Sync>>>>,
 }
 
 impl Server {
@@ -43,11 +44,34 @@ impl Server {
             services: Arc::new(RwLock::new(HashMap::new())),
             thread_number,
             register_plugins: Arc::new(RwLock::new(Vec::new())),
+            connect_plugins: Arc::new(RwLock::new(Vec::new())),
             raw_fd: None,
         }
     }
 
-    pub fn register_fn(&mut self, service_path: String, service_method: String, f: RpcxFn) {
+    pub fn register_fn(
+        &mut self,
+        service_path: String,
+        service_method: String,
+        meta: String,
+        f: RpcxFn,
+    ) {
+        // invoke register plugins
+        let mut plugins = self.register_plugins.write().unwrap();
+        for p in plugins.iter_mut() {
+            let pp = &mut **p;
+            match pp.register_fn(
+                service_path.as_str(),
+                service_method.as_str(),
+                meta.clone(),
+                f,
+            ) {
+                Ok(_) => {}
+                Err(err) => eprintln!("{}", err),
+            }
+        }
+
+        // invoke service
         let key = format!("{}.{}", service_path, service_method);
         let services = self.services.clone();
         let mut map = services.write().unwrap();
@@ -144,7 +168,7 @@ impl Server {
                         }
                     }
                     Err(err) => {
-                        //println!("failed to read: {}", err.to_string());
+                        eprintln!("failed to read: {}", err.to_string());
                         match local_stream.shutdown(Shutdown::Both) {
                             Ok(()) => {
                                 if let Ok(sa) = local_stream.peer_addr() {
@@ -184,7 +208,7 @@ fn invoke_fn(stream: TcpStream, msg: Message, f: RpcxFn) {
 
 #[macro_export]
 macro_rules! register_func {
-    ($rpc_server:expr, $service_path:expr, $service_method:expr, $service_fn:expr, $arg_type:ty, $reply_type:ty) => {{
+    ($rpc_server:expr, $service_path:expr, $service_method:expr, $service_fn:expr, $meta:expr, $arg_type:ty, $reply_type:ty) => {{
         let f: RpcxFn = |x, st| {
             // TODO change ProtoArgs to $arg_typ
             let mut args: $arg_type = Default::default();
@@ -192,6 +216,11 @@ macro_rules! register_func {
             let reply: $reply_type = $service_fn(args);
             reply.into_bytes(st)
         };
-        $rpc_server.register_fn($service_path.to_string(), $service_method.to_string(), f);
+        $rpc_server.register_fn(
+            $service_path.to_string(),
+            $service_method.to_string(),
+            $meta,
+            f,
+        );
     }};
 }
