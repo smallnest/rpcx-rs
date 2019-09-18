@@ -120,11 +120,11 @@ impl EtcdRegister {
         // "<base_path>/<service_path>/<service_addr>"
         key.push('/');
         key.push_str(service_addr.as_str());
-        let op = kv::update(
+        let op = kv::set(
             etcd_client,
             key.as_str(),
             meta,
-            Some(update_interval.as_secs()),
+            Some(update_interval.as_secs() * 2),
         );
         match Runtime::new().unwrap().block_on(op) {
             Ok(_) => {}
@@ -144,6 +144,9 @@ impl EtcdRegister {
 }
 impl RegisterPlugin for EtcdRegister {
     fn register_fn(&mut self, service_path: &str, _: &str, meta: String, _: RpcxFn) -> Result<()> {
+        if self.services.read().unwrap().get(service_path).is_some() {
+            return Ok(());
+        }
         let mut key: String = self.base_path.clone();
         key.push('/');
         key.push_str(service_path);
@@ -194,18 +197,26 @@ impl RegisterPlugin for EtcdRegister {
             &self.client,
             key.as_str(),
             meta.as_str(),
-            Some(self.update_interval.as_secs()),
+            Some(self.update_interval.as_secs() * 2),
         );
         match Runtime::new().unwrap().block_on(op) {
-            Ok(_) => {}
+            Ok(_) => println!("succeed to register: {}", key.as_str()),
             Err(err) => match &err[0] {
                 etcd::Error::Api(api_err) => {
                     if api_err.error_code != 105 {
-                        return Err(Error::from(format!("{:?}", err)));
+                        return Err(Error::from(format!(
+                            "failed to register:{}, err:{:?}",
+                            key.as_str(),
+                            err
+                        )));
                     }
                 }
                 _ => {
-                    return Err(Error::from(format!("{:?}", err)));
+                    return Err(Error::from(format!(
+                        "failed to set:{}, err:{:?}",
+                        key.as_str(),
+                        err
+                    )));
                 }
             },
         }

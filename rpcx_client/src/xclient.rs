@@ -50,14 +50,16 @@ pub enum SelectMode {
 
 pub struct XClient<S: ClientSelector> {
     pub opt: Opt,
+    service_path: String,
     fail_mode: FailMode,
     clients: Arc<RwLock<HashMap<String, RefCell<Client>>>>,
     selector: Box<S>,
 }
 
 impl<S: ClientSelector> XClient<S> {
-    pub fn new(fm: FailMode, s: Box<S>, opt: Opt) -> Self {
+    pub fn new(service_path: String, fm: FailMode, s: Box<S>, opt: Opt) -> Self {
         XClient {
+            service_path,
             fail_mode: fm,
             selector: s,
             clients: Arc::new(RwLock::new(HashMap::new())),
@@ -103,7 +105,6 @@ impl<S: ClientSelector> XClient<S> {
 impl<S: ClientSelector> RpcxClient for XClient<S> {
     fn call<T>(
         &mut self,
-        service_path: &str,
         service_method: &str,
         is_oneway: bool,
         metadata: &Metadata,
@@ -112,6 +113,7 @@ impl<S: ClientSelector> RpcxClient for XClient<S> {
     where
         T: RpcxParam + Default,
     {
+        let service_path = self.service_path.as_str();
         // get a key from selector
         let selector = &mut (self.selector);
         let k = selector.select(service_path, service_method, args);
@@ -203,7 +205,6 @@ impl<S: ClientSelector> RpcxClient for XClient<S> {
     }
     fn acall<T>(
         &mut self,
-        service_path: &str,
         service_method: &str,
         metadata: &Metadata,
         args: &dyn RpcxParam,
@@ -211,6 +212,7 @@ impl<S: ClientSelector> RpcxClient for XClient<S> {
     where
         T: RpcxParam + Default + Sync + Send + 'static,
     {
+        let service_path = self.service_path.as_str();
         // get a key from selector
         let k = self.selector.select(service_path, service_method, args);
         if k.is_empty() {

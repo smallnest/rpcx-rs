@@ -289,10 +289,8 @@ impl Client {
             }
         }
     }
-}
 
-impl RpcxClient for Client {
-    fn call<T>(
+    pub fn call<T>(
         &mut self,
         service_path: &str,
         service_method: &str,
@@ -338,7 +336,7 @@ impl RpcxClient for Client {
         }
     }
 
-    fn acall<T>(
+    pub fn acall<T>(
         &mut self,
         service_path: &str,
         service_method: &str,

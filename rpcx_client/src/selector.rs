@@ -28,6 +28,9 @@ impl RandomSelector {
     }
 }
 
+unsafe impl Sync for RandomSelector {}
+unsafe impl Send for RandomSelector {}
+
 impl ClientSelector for RandomSelector {
     fn select(
         &mut self,
@@ -37,6 +40,9 @@ impl ClientSelector for RandomSelector {
     ) -> String {
         let servers = (*self).servers.read().unwrap();
         let size = servers.len();
+        if size == 0 {
+            return String::new();
+        }
         let idx = (*self).rnd.gen_range(0, size);
         let s = &servers[idx];
         String::from(s)
@@ -65,6 +71,9 @@ impl RoundbinSelector {
     }
 }
 
+unsafe impl Sync for RoundbinSelector {}
+unsafe impl Send for RoundbinSelector {}
+
 impl ClientSelector for RoundbinSelector {
     fn select(
         &mut self,
@@ -74,6 +83,9 @@ impl ClientSelector for RoundbinSelector {
     ) -> String {
         let servers = (*self).servers.read().unwrap();
         let size = servers.len();
+        if size == 0 {
+            return String::new();
+        }
         self.index = (self.index + 1) % size;
         let s = &servers[self.index];
         String::from(s)
@@ -99,6 +111,9 @@ impl WeightedSelector {
         }
     }
 }
+
+unsafe impl Sync for WeightedSelector {}
+unsafe impl Send for WeightedSelector {}
 
 impl ClientSelector for WeightedSelector {
     fn select(
@@ -160,7 +175,9 @@ impl ClientSelector for ConsistentHashSelector {
     fn select(&mut self, service_path: &str, service_method: &str, args: &dyn RpcxParam) -> String {
         let servers = (*self).servers.read().unwrap();
         let size = servers.len();
-
+        if size == 0 {
+            return String::new();
+        }
         // let data = Vec::new(service_path.len() + service_method.len());
         let jh = jumphash::JumpHasher::new();
         let mut data = Vec::new();

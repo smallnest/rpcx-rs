@@ -15,18 +15,22 @@ pub fn main() {
     let mut opt: Opt = Default::default();
     opt.serialize_type = SerializeType::JSON;
     opt.compress_type = CompressType::Gzip;
-    let mut xc = XClient::new(FailMode::Failfast, Box::new(selector), opt);
+    let mut xc = XClient::new(
+        String::from("Arith"),
+        FailMode::Failfast,
+        Box::new(selector),
+        opt,
+    );
 
     let mut a = 1;
     loop {
-        let service_path = String::from("Arith");
         let service_method = String::from("Mul");
         let metadata = HashMap::new();
         let args = ArithAddArgs { a, b: 10 };
         a += 1;
 
         let reply: Option<Result<ArithAddReply>> =
-            xc.call(&service_path, &service_method, false, &metadata, &args);
+            xc.call(&service_method, false, &metadata, &args);
         if reply.is_none() {
             continue;
         }

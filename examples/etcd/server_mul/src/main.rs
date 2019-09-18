@@ -17,7 +17,7 @@ fn main() {
     let p = EtcdRegister::new(
         etcd_client,
         "/rpcx_test".to_owned(),
-        "127.0.0.1:8972".to_owned(),
+        "tcp@127.0.0.1:8972".to_owned(),
         time::Duration::new(5, 0),
     );
 

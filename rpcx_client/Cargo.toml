@@ -17,6 +17,9 @@ edition = "2018"
 [dependencies]
 weighted-rs = "0.1.2"
 futures = "0.1.28"
+tokio = "0.1.22"
+etcd = "0.9.0"
+hyper = "0.12.35"
 qstring = "0.7.0"
 evmap = "6.0.0"
 rand = "0.7"
@@ -25,5 +28,7 @@ strum_macros = "0.15.0"
 num-traits = "0.2.8"
 enum-primitive-derive = "0.1.2"
 jumphash = "0.1.6"
+rayon = "1.2.0"
+crossbeam = "0.7.2"
 rpcx_protocol =  { version = "0.2.1", path = "../rpcx_protocol" }
 rpcx_derive =  { version = "0.2.1", path = "../rpcx_derive" }
