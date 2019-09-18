@@ -15,7 +15,7 @@ use std::{
 
 use futures::future::*;
 
-use super::RpcxClient;
+
 use rpcx_protocol::{call::*, *};
 
 #[derive(Debug, Copy, Clone)]
@@ -151,7 +151,7 @@ impl Client {
             let mut writer = BufWriter::new(write_stream.try_clone().unwrap());
             loop {
                 match chan_receiver.lock().unwrap().recv() {
-                    Err(err) => {
+                    Err(_err) => {
                         //eprintln!("failed to fetch RpcData: {}", err.to_string());
                         write_stream.shutdown(Shutdown::Both).unwrap();
                         return;

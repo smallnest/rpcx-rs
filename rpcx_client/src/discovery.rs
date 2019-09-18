@@ -1,5 +1,5 @@
 use super::selector::ClientSelector;
-use crossbeam::thread;
+
 use etcd::{
     kv::{self, KeyValueInfo},
     Client,
@@ -71,14 +71,14 @@ impl<'a> EtcdDiscovery<'a> {
         base_path: String,
         service_path: String,
     ) -> EtcdDiscovery<'a> {
-        let mut d = EtcdDiscovery {
+        let d = EtcdDiscovery {
             base_path: base_path.clone(),
             service_path: service_path.clone(),
             servers: Arc::new(RwLock::new(HashMap::new())),
             selectors: Arc::new(RwLock::new(Vec::new())),
         };
 
-        let selectors_cloned = d.selectors.clone();
+        let _selectors_cloned = d.selectors.clone();
         let servers_cloned = d.servers.clone();
         let mut prefix = base_path.clone();
         prefix.push('/');
@@ -86,7 +86,7 @@ impl<'a> EtcdDiscovery<'a> {
         prefix.push('/');
         Self::list(&client, prefix.clone(), servers_cloned);
 
-        let servers_cloned2 = d.servers.clone();
+        let _servers_cloned2 = d.servers.clone();
 
         // TODO: lifetime issue. can't run watch in a standalone thread
 
@@ -158,10 +158,11 @@ impl<'a> EtcdDiscovery<'a> {
                             changed = true;
                         }
                         _ => {
-                            let mut v = "".to_owned();
-                            if node.value.is_some() {
-                                v = node.value.as_ref().unwrap().clone();
-                            }
+                            let v = if node.value.is_some() {
+                                node.value.as_ref().unwrap().clone()
+                            } else {
+                                "".to_owned()
+                            };
                             if m.contains_key(&k2) {
                                 changed = *m.get(&k2).unwrap() != v
                             }
