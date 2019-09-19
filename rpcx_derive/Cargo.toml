@@ -1,6 +1,6 @@
 [package]
 name = "rpcx_derive"
-version = "0.2.1"
+version = "0.2.2"
 authors = ["smallnest@gmail.com"]
 license = "MIT"
 readme = "README.md"
@@ -15,7 +15,7 @@ edition = "2018"
 [dependencies]
 syn = "0.15"
 quote = "0.6"
-rpcx_protocol =  { version = "0.2.1", path = "../rpcx_protocol" }
+rpcx_protocol =  { version = "0.2.2", path = "../rpcx_protocol" }
 
 [lib]
 proc-macro = true

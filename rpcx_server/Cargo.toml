@@ -1,6 +1,6 @@
 [package]
 name = "rpcx_server"
-version = "0.2.1"
+version = "0.2.2"
 authors = ["smallnest@gmail.com"]
 license = "MIT"
 readme = "README.md"
@@ -25,5 +25,5 @@ tokio = "0.1.22"
 futures = "0.1.28"
 etcd = "0.9.0"
 hyper = "0.12.35"
-rpcx_protocol =  { version = "0.2.1", path = "../rpcx_protocol" }
-rpcx_derive =  { version = "0.2.1", path = "../rpcx_derive" }
+rpcx_protocol =  { version = "0.2.2", path = "../rpcx_protocol" }
+rpcx_derive =  { version = "0.2.2", path = "../rpcx_derive" }

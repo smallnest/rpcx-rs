@@ -7,8 +7,10 @@ use etcd::{
 use hyper::client::HttpConnector;
 use std::{
     collections::HashMap,
+    mem::transmute,
     ops::Deref,
     sync::{Arc, RwLock},
+    thread,
 };
 use tokio::runtime::Runtime;
 
@@ -72,34 +74,25 @@ impl<'a> EtcdDiscovery<'a> {
         service_path: String,
     ) -> EtcdDiscovery<'a> {
         let d = EtcdDiscovery {
-            base_path: base_path.clone(),
-            service_path: service_path.clone(),
+            base_path,
+            service_path,
             servers: Arc::new(RwLock::new(HashMap::new())),
             selectors: Arc::new(RwLock::new(Vec::new())),
         };
 
-        let _selectors_cloned = d.selectors.clone();
+        let mut prefix = d.base_path.clone();
+        prefix.push('/');
+        prefix.push_str(d.service_path.clone().as_str());
+        prefix.push('/');
+        Self::list(&client, prefix.clone(), d.servers.clone());
+
+        let selectors_cloned: Arc<RwLock<Vec<&(dyn ClientSelector + Sync + Send + 'static)>>> =
+            unsafe { transmute(d.selectors.clone()) };
         let servers_cloned = d.servers.clone();
-        let mut prefix = base_path.clone();
-        prefix.push('/');
-        prefix.push_str(service_path.as_str());
-        prefix.push('/');
-        Self::list(&client, prefix.clone(), servers_cloned);
 
-        let _servers_cloned2 = d.servers.clone();
-
-        // TODO: lifetime issue. can't run watch in a standalone thread
-
-        // thread::scope(|s| {
-        //     s.spawn(|_| {
-        //         Self::watch(client, prefix, selectors_cloned, servers_cloned2);
-        //     });
-        // });
-
-        // rayon::scope(|s| {
-        //     s.spawn(|s| Self::watch(client, prefix, selectors_cloned, servers_cloned2));
-        // });
-
+        thread::spawn(move || {
+            Self::watch(client, prefix, selectors_cloned, servers_cloned);
+        });
         d
     }
     fn list(
@@ -132,10 +125,10 @@ impl<'a> EtcdDiscovery<'a> {
         }
     }
 
-    fn watch(
+    pub fn watch(
         etc_client: Client<HttpConnector>,
         prefix: String,
-        selectors: Arc<RwLock<Vec<&'a (dyn ClientSelector + Sync + Send + 'static)>>>,
+        selectors: Arc<RwLock<Vec<&(dyn ClientSelector + Sync + Send + 'static)>>>,
         servers: Arc<RwLock<HashMap<String, String>>>,
     ) {
         let key = prefix;

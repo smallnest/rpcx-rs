@@ -28,13 +28,13 @@ protocol and client/server lib.
 
 - [ ] Service discovery
   - [x] static multiple peers 
-  - [ ] etcd
+  - [x] etcd
   - [ ] consul
 - [ ] service governance
  - [ ] Select Mode
    - [x] RandomSelect,
    - [x] RoundRobin
-   - [ ] WeightedRoundRobin
+   - [x] WeightedRoundRobin
    - [ ] WeightedICMP
    - [x] ConsistentHash
    - [ ] Closest
@@ -43,7 +43,6 @@ protocol and client/server lib.
    - [x] Failover
    - [x] Failfast
    - [x] Failtry
-   - [ ] Failbackup
 
 
 ### 0.3.x

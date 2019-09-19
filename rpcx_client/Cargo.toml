@@ -1,6 +1,6 @@
 [package]
 name = "rpcx_client"
-version = "0.2.1"
+version = "0.2.2"
 authors = ["smallnest@gmail.com"]
 license = "MIT"
 readme = "README.md"
@@ -28,7 +28,5 @@ strum_macros = "0.15.0"
 num-traits = "0.2.8"
 enum-primitive-derive = "0.1.2"
 jumphash = "0.1.6"
-rayon = "1.2.0"
-crossbeam = "0.7.2"
-rpcx_protocol =  { version = "0.2.1", path = "../rpcx_protocol" }
-rpcx_derive =  { version = "0.2.1", path = "../rpcx_derive" }
+rpcx_protocol =  { version = "0.2.2", path = "../rpcx_protocol" }
+rpcx_derive =  { version = "0.2.2", path = "../rpcx_derive" }
