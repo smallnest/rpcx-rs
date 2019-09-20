@@ -1,6 +1,6 @@
 use byteorder::{BigEndian, ByteOrder};
 use enum_primitive_derive::Primitive;
-use flate2::{read::DeflateDecoder, write::DeflateEncoder, Compression};
+use flate2::{read::GzDecoder, write::GzEncoder, Compression};
 use num_traits::{FromPrimitive, ToPrimitive};
 use strum_macros::{Display, EnumIter, EnumString};
 
@@ -222,7 +222,7 @@ impl RpcxMessage for Message {
         let mut vp = Vec::with_capacity(payload.len());
         match self.get_compress_type().unwrap() {
             CompressType::Gzip => {
-                let mut deflater = DeflateDecoder::new(payload);
+                let mut deflater = GzDecoder::new(payload);
                 deflater.read_to_end(&mut vp)?;
             }
             CompressType::CompressNone => {
@@ -279,10 +279,9 @@ impl RpcxMessage for Message {
 
         match self.get_compress_type().unwrap() {
             CompressType::Gzip => {
-                let mut e = DeflateEncoder::new(Vec::new(), Compression::fast());
+                let mut e = GzEncoder::new(Vec::new(), Compression::fast());
                 let _ = e.write_all(&self.payload[..]);
                 let compressed_payload = e.finish().unwrap();
-
                 let len = compressed_payload.len();
                 let len_bytes = write_len(len as u32);
                 buf.extend_from_slice(&len_bytes);
