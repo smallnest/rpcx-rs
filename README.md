@@ -11,7 +11,7 @@ Use the **simplest** style to explore Rust function as cross-platform rpc servic
 If you can write Rust functions, you can write rpc services. It is so easy.
 
 
-see all exampes: [rpcx-rs-examples](https://github.com/smallnest/rpcx-rs/examples).
+see all exampes: [rpcx-rs-examples](https://github.com/smallnest/rpcx-rs/tree/master/examples).
 
 ## Roadmap
 
