@@ -1,17 +1,19 @@
 use crate::Result;
-use futures::{
-    task::{current, Task},
-    Async, Future, Poll,
-};
+
 use std::{
     cell::RefCell,
     fmt::Debug,
+    future::Future,
+    pin::Pin,
     sync::{Arc, Mutex},
+    task::{Context, Poll, Waker},
 };
 
 use crate::SerializeType;
 
 use bytes::BytesMut;
+
+use super::Error;
 
 pub trait RpcxParam: Debug {
     fn into_bytes(&self, st: SerializeType) -> Result<Vec<u8>>;
@@ -32,7 +34,7 @@ impl RpcxParam for BytesMut {
 #[derive(Debug)]
 pub struct Status {
     pub ready: bool,
-    pub task: Option<Task>,
+    pub task: Option<Waker>,
 }
 
 #[derive(Debug)]
@@ -61,6 +63,28 @@ impl Call {
 
 pub type ArcCall = Arc<Mutex<RefCell<Call>>>;
 
+pub fn get_result<T>(arc_call: Option<ArcCall>, st: SerializeType) -> Result<T>
+where
+    T: RpcxParam + Default,
+{
+    if arc_call.is_none() {
+        return Err(Error::from("reply is empty"));
+    }
+    let arc_call_1 = arc_call.unwrap().clone();
+    let mut arc_call_2 = arc_call_1.lock().unwrap();
+    let arc_call_3 = arc_call_2.get_mut();
+    let reply_data = &arc_call_3.reply_data;
+    if !arc_call_3.error.is_empty() {
+        let err = &arc_call_3.error;
+        return Err(Error::from(String::from(err)));
+    }
+
+    let mut reply: T = Default::default();
+    match reply.from_slice(st, &reply_data) {
+        Ok(()) => Ok(reply),
+        Err(err) => Err(err),
+    }
+}
 pub struct CallFuture {
     pub arc_call: Option<ArcCall>,
 }
@@ -72,12 +96,11 @@ impl CallFuture {
 }
 
 impl Future for CallFuture {
-    type Item = Option<ArcCall>;
-    type Error = String;
+    type Output = Option<ArcCall>;
 
-    fn poll(&mut self) -> Poll<Option<ArcCall>, String> {
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         if self.arc_call.is_none() {
-            return Ok(Async::Ready(None));
+            return Poll::Ready(None);
         }
 
         let arc_call = self.arc_call.as_ref().unwrap().clone();
@@ -85,10 +108,10 @@ impl Future for CallFuture {
         let state = &arc_call_1.get_mut().state;
         let mut status = state.lock().expect("!lock");
         if status.ready {
-            Ok(Async::Ready(Some(arc_call.clone())))
+            Poll::Ready(Some(arc_call.clone()))
         } else {
-            status.task = Some(current());
-            Ok(Async::NotReady)
+            status.task = Some(cx.waker().clone());
+            Poll::Pending
         }
     }
 }

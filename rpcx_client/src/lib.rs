@@ -8,9 +8,11 @@ pub use discovery::*;
 pub use selector::*;
 pub use xclient::*;
 
-use futures::Future;
-use rpcx_protocol::{Error, Metadata, Result, RpcxParam};
+use async_trait::async_trait;
 
+use rpcx_protocol::{CallFuture, Metadata, Result, RpcxParam};
+
+#[async_trait]
 pub trait RpcxClient {
     fn call<T>(
         &mut self,
@@ -22,12 +24,13 @@ pub trait RpcxClient {
     where
         T: RpcxParam + Default;
 
-    fn acall<T>(
+    fn send<T>(
         &mut self,
         service_method: &str,
+        is_oneway: bool,
         metadata: &Metadata,
         args: &dyn RpcxParam,
-    ) -> Box<dyn Future<Item = Result<T>, Error = Error> + Send + Sync>
+    ) -> CallFuture
     where
         T: RpcxParam + Default + Sync + Send + 'static;
 }

@@ -1,28 +1,26 @@
-
-use  protoc_rust::Customize;
+use protoc_rust::Customize;
 
 fn main() {
-
     // protoc_rust::run(protoc_rust::Args {
-	//     out_dir: "src/",
-	//     input: &["protos/arith.proto"],
-	//     includes: &["protos"],
-	//     customize: Customize {
+    //     out_dir: "src/",
+    //     input: &["protos/arith.proto"],
+    //     includes: &["protos"],
+    //     customize: Customize {
     //         // serde_derive_cfg: None,
     //         // serde_derive: Some(true),
-	//       ..Default::default()
-	//     },
-	// }).expect("protoc");
+    //       ..Default::default()
+    //     },
+    // }).expect("protoc");
 
-	protobuf_codegen_pure::run(protobuf_codegen_pure::Args {
-	    out_dir: "src/",
-	    input: &["protos/arith.proto"],
-	    includes: &["protos"],
-	    customize: Customize {
+    protobuf_codegen_pure::run(protobuf_codegen_pure::Args {
+        out_dir: "src/",
+        input: &["protos/arith.proto"],
+        includes: &["protos"],
+        customize: Customize {
             // serde_derive_cfg: None,
             // serde_derive: Some(true),
-	      ..Default::default()
-	    },
-	}).expect("protoc");
-  }
- 
+            ..Default::default()
+        },
+    })
+    .expect("protoc");
+}

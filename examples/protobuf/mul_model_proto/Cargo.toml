@@ -1,6 +1,6 @@
 [package]
 name = "mul_model_proto"
-version = "0.2.2"
+version = "0.3.0"
 authors = ["smallnest <smallnest@gmail.com>"]
 edition = "2018"
 
@@ -9,7 +9,7 @@ default = []
 
 [dependencies]
 protobuf = "2.8.0"
-rpcx =  { version = "0.2.2", path = "../../../rpcx" }
+rpcx =  { version = "0.3.0", path = "../../../rpcx" }
 
 [build-dependencies]
 protoc-rust = "2.8.0"

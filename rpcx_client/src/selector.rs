@@ -43,7 +43,7 @@ impl ClientSelector for RandomSelector {
         if size == 0 {
             return String::new();
         }
-        let idx = (*self).rnd.gen_range(0, size);
+        let idx = (*self).rnd.gen_range(0..size);
         let s = &servers[idx];
         String::from(s)
     }

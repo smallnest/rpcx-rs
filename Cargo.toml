@@ -14,8 +14,6 @@ members = [
     "examples/protobuf/mul_model_proto",
     "examples/protobuf/client_call_mul",
     "examples/protobuf/server_mul",
-    "examples/etcd/server_mul",
-    "examples/etcd/xclient_call_mul",
     "test_suite"
 ]
  

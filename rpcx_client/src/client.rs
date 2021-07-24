@@ -13,10 +13,8 @@ use std::{
     time::Duration,
 };
 
-use futures::future::*;
-
-
 use rpcx_protocol::{call::*, *};
+use tokio::runtime::Runtime;
 
 #[derive(Debug, Copy, Clone)]
 pub struct Opt {
@@ -128,7 +126,7 @@ impl Client {
                             let mut status = internal_call.state.lock().unwrap();
                             status.ready = true;
                             if let Some(ref task) = status.task {
-                                task.notify()
+                                task.clone().wake()
                             }
                         }
                     }
@@ -253,7 +251,7 @@ impl Client {
             let mut status = internal_call.state.lock().unwrap();
             status.ready = true;
             if let Some(ref task) = status.task {
-                task.notify()
+                task.clone().wake()
             }
         }
     }
@@ -268,7 +266,7 @@ impl Client {
             let mut status = internal_call.state.lock().unwrap();
             status.ready = true;
             if let Some(ref task) = status.task {
-                task.notify()
+                task.clone().wake()
             }
         }
     }
@@ -285,7 +283,7 @@ impl Client {
             let mut status = internal_call.state.lock().unwrap();
             status.ready = true;
             if let Some(ref task) = status.task {
-                task.notify()
+                task.clone().wake()
             }
         }
     }
@@ -301,21 +299,24 @@ impl Client {
     where
         T: RpcxParam + Default,
     {
-        let f = self.send(
-            service_path,
-            service_method,
-            is_oneway,
-            false,
-            metadata,
-            args,
-        );
+        let rt = Runtime::new().unwrap();
+        let callfuture = rt.block_on(async {
+            let f = self.send(
+                service_path,
+                service_method,
+                is_oneway,
+                false,
+                metadata,
+                args,
+            );
+            f.await
+        });
 
         if is_oneway {
             return None;
         }
 
-        let arc_call = f.wait().unwrap();
-        let arc_call_1 = arc_call.unwrap().clone();
+        let arc_call_1 = callfuture.unwrap().clone();
         let mut arc_call_2 = arc_call_1.lock().unwrap();
         let arc_call_3 = arc_call_2.get_mut();
         let reply_data = &arc_call_3.reply_data;
@@ -334,40 +335,5 @@ impl Client {
             Ok(()) => Some(Ok(reply)),
             Err(err) => Some(Err(err)),
         }
-    }
-
-    pub fn acall<T>(
-        &mut self,
-        service_path: &str,
-        service_method: &str,
-        metadata: &Metadata,
-        args: &dyn RpcxParam,
-    ) -> Box<dyn Future<Item = Result<T>, Error = Error> + Send + Sync>
-    where
-        T: RpcxParam + Default,
-    {
-        let f = self.send(service_path, service_method, false, false, metadata, args);
-
-        let st = self.opt.serialize_type;
-        let rt = f
-            .map(move |opt_arc_call| {
-                let arc_call_1 = opt_arc_call.unwrap().clone();
-                let mut arc_call_2 = arc_call_1.lock().unwrap();
-                let arc_call_3 = arc_call_2.get_mut();
-                let reply_data = &arc_call_3.reply_data;
-                if !arc_call_3.error.is_empty() {
-                    let err = &arc_call_3.error;
-                    return Err(Error::from(String::from(err)));
-                }
-
-                let mut reply: T = Default::default();
-                match reply.from_slice(st, &reply_data) {
-                    Ok(()) => Ok(reply),
-                    Err(err) => Err(err),
-                }
-            })
-            .map_err(Error::from);
-
-        Box::new(rt)
     }
 }

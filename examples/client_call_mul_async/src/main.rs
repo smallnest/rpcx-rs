@@ -1,11 +1,10 @@
 use std::collections::hash_map::HashMap;
 
-use futures::future::*;
-
 use mul_model::*;
 use rpcx::*;
 
-pub fn main() {
+#[tokio::main]
+pub async fn main() -> Result<()> {
     let mut c: Client = Client::new("127.0.0.1:8972");
     c.start().map_err(|err| println!("{}", err)).unwrap();
     c.opt.serialize_type = SerializeType::MsgPack;
@@ -18,11 +17,19 @@ pub fn main() {
         let args = ArithAddArgs { a, b: 10 };
         a += 1;
 
-        let reply: Result<Result<ArithAddReply>> = c
-            .acall(&service_path, &service_method, &metadata, &args)
-            .wait();
-        let result_reply = reply.unwrap();
-        match result_reply {
+        let resp = c
+            .send(
+                &service_path,
+                &service_method,
+                false,
+                false,
+                &metadata,
+                &args,
+            )
+            .await;
+
+        let reply: Result<ArithAddReply> = get_result(resp, SerializeType::SerializeNone);
+        match reply {
             Ok(r) => println!("received: {:?}", r),
             Err(err) => println!("received err:{}", err),
         }

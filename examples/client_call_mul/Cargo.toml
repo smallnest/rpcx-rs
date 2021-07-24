@@ -1,11 +1,11 @@
 [package]
 name = "client_call_mul"
-version = "0.2.2"
+version = "0.3.0"
 authors = ["smallnest <smallnest@gmail.com>"]
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-rpcx =  { version = "0.2.2", path = "../../rpcx" }
-mul_model =  { version = "0.2.2", path = "../mul_model" }
+rpcx =  { version = "0.3.0", path = "../../rpcx" }
+mul_model =  { version = "0.3.0", path = "../mul_model" }

@@ -8,12 +8,12 @@ use super::{
     client::{Client, Opt},
     RpcxClient,
 };
-use futures::{future, Future};
-use rpcx_protocol::{Error, ErrorKind, Metadata, Result, RpcxParam};
+
+use rpcx_protocol::{call::*, CallFuture, Error, ErrorKind, Metadata, Result, RpcxParam};
 use std::{
     boxed::Box,
     cell::RefCell,
-    sync::{Arc, RwLock, RwLockWriteGuard},
+    sync::{Arc, Mutex, RwLock, RwLockWriteGuard},
 };
 use strum_macros::{Display, EnumIter, EnumString};
 
@@ -55,6 +55,9 @@ pub struct XClient<S: ClientSelector> {
     clients: Arc<RwLock<HashMap<String, RefCell<Client>>>>,
     selector: Box<S>,
 }
+
+unsafe impl<S: ClientSelector> Send for XClient<S> {}
+unsafe impl<S: ClientSelector> Sync for XClient<S> {}
 
 impl<S: ClientSelector> XClient<S> {
     pub fn new(service_path: String, fm: FailMode, s: Box<S>, opt: Opt) -> Self {
@@ -203,12 +206,14 @@ impl<S: ClientSelector> RpcxClient for XClient<S> {
             Ok(r) => Some(Ok(r)),
         }
     }
-    fn acall<T>(
+
+    fn send<T>(
         &mut self,
         service_method: &str,
+        is_oneway: bool,
         metadata: &Metadata,
         args: &dyn RpcxParam,
-    ) -> Box<dyn Future<Item = Result<T>, Error = Error> + Send + Sync>
+    ) -> CallFuture
     where
         T: RpcxParam + Default + Sync + Send + 'static,
     {
@@ -216,18 +221,50 @@ impl<S: ClientSelector> RpcxClient for XClient<S> {
         // get a key from selector
         let k = self.selector.select(service_path, service_method, args);
         if k.is_empty() {
-            return Box::new(future::err(Error::from("server not found".to_owned())));
+            let callback = Call::new(0);
+            let arc_call = Arc::new(Mutex::new(RefCell::from(callback)));
+            let internal_call_cloned = arc_call.clone();
+            let mut internal_call_mutex = internal_call_cloned.lock().unwrap();
+            let internal_call = internal_call_mutex.get_mut();
+            internal_call.error = "server not found".to_owned();
+            let mut status = internal_call.state.lock().unwrap();
+            status.ready = true;
+            if let Some(ref task) = status.task {
+                task.clone().wake()
+            }
+
+            return CallFuture::new(Some(arc_call));
         }
 
         let mut clients_guard = self.clients.write().unwrap();
         let client = self.get_cached_client(&mut clients_guard, k.clone());
 
         if let Err(err) = client {
-            return Box::new(future::err(err));
+            let callback = Call::new(0);
+            let arc_call = Arc::new(Mutex::new(RefCell::from(callback)));
+            let internal_call_cloned = arc_call.clone();
+            let mut internal_call_mutex = internal_call_cloned.lock().unwrap();
+            let internal_call = internal_call_mutex.get_mut();
+            internal_call.error = err.to_string();
+            let mut status = internal_call.state.lock().unwrap();
+            status.ready = true;
+            if let Some(ref task) = status.task {
+                task.clone().wake()
+            }
+
+            return CallFuture::new(Some(arc_call));
         }
 
         // invoke this client
-        let mut selected_client = client.unwrap().borrow_mut();
-        selected_client.acall::<T>(service_path, service_method, metadata, args)
+        let selected_client = client.unwrap().borrow_mut();
+
+        selected_client.send(
+            service_path,
+            service_method,
+            is_oneway,
+            false,
+            metadata,
+            args,
+        )
     }
 }

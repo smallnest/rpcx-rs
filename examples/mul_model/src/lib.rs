@@ -1,6 +1,6 @@
 use std::error::Error as StdError;
 
-use rmp_serde as rmps; 
+use rmp_serde as rmps;
 use serde::{Deserialize, Serialize};
 
 use rpcx::*;
