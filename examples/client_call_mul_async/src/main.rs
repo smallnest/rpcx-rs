@@ -28,7 +28,7 @@ pub async fn main() -> Result<()> {
             )
             .await;
 
-        let reply: Result<ArithAddReply> = get_result(resp, SerializeType::SerializeNone);
+        let reply: Result<ArithAddReply> = get_result(resp, SerializeType::MsgPack);
         match reply {
             Ok(r) => println!("received: {:?}", r),
             Err(err) => println!("received err:{}", err),
