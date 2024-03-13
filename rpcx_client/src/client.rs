@@ -90,7 +90,7 @@ impl Client {
             stream.set_read_timeout(Some(self.opt.read_timeout))?;
         }
         if self.opt.write_timeout.as_millis() > 0 {
-            stream.set_write_timeout(Some(self.opt.read_timeout))?;
+            stream.set_write_timeout(Some(self.opt.write_timeout))?;
         }
 
         if self.opt.nodelay.is_some() {
